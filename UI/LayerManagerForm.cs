@@ -7,8 +7,6 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using Autodesk.AutoCAD.DatabaseServices;
-using Autodesk.AutoCAD.Geometry;
-using AutoCAD_Layer_Manger.Services;
 
 namespace AutoCAD_Layer_Manger.UI
 {
@@ -18,24 +16,17 @@ namespace AutoCAD_Layer_Manger.UI
     public partial class LayerManagerForm : Form
     {
         private readonly ObjectId[] _entityIds;
-        private readonly ILayerService _layerService;
-        private readonly IEntityConverter _entityConverter;
-        
         public ConversionResult? Result { get; private set; }
 
         public LayerManagerForm()
         {
             _entityIds = Array.Empty<ObjectId>();
-            _entityConverter = new EntityConverter();
-            _layerService = new LayerService(_entityConverter);
             InitializeComponent();
         }
 
         public LayerManagerForm(ObjectId[] entityIds)
         {
             _entityIds = entityIds;
-            _entityConverter = new EntityConverter();
-            _layerService = new LayerService(_entityConverter);
             InitializeComponent();
             InitializeFormData();
         }
@@ -54,18 +45,35 @@ namespace AutoCAD_Layer_Manger.UI
             try
             {
                 this.statusLabel.Text = "正在載入圖層...";
+                
+                var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
+                if (doc?.Database == null) return;
+
                 this.layerComboBox.Items.Clear();
                 
-                // 使用同步方法來避免線程問題
-                var layers = GetLayersSync();
-                
-                foreach (var layer in layers)
+                using (var tr = doc.Database.TransactionManager.StartTransaction())
                 {
-                    string displayName = layer.Name;
-                    if (layer.IsLocked) displayName += " (鎖定)";
-                    if (layer.IsFrozen) displayName += " (凍結)";
+                    var layerTable = tr.GetObject(doc.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
+                    if (layerTable == null) return;
+
+                    var layers = new List<(string Name, bool IsLocked, bool IsFrozen)>();
+                    foreach (ObjectId layerId in layerTable)
+                    {
+                        if (tr.GetObject(layerId, OpenMode.ForRead) is LayerTableRecord ltr)
+                        {
+                            layers.Add((ltr.Name, ltr.IsLocked, ltr.IsFrozen));
+                        }
+                    }
+                    tr.Commit();
                     
-                    this.layerComboBox.Items.Add(displayName);
+                    foreach (var layer in layers.OrderBy(l => l.Name))
+                    {
+                        string displayName = layer.Name;
+                        if (layer.IsLocked) displayName += " (鎖定)";
+                        if (layer.IsFrozen) displayName += " (凍結)";
+                        
+                        this.layerComboBox.Items.Add(displayName);
+                    }
                 }
                 
                 if (this.layerComboBox.Items.Count > 0)
@@ -83,74 +91,18 @@ namespace AutoCAD_Layer_Manger.UI
             }
         }
 
-        /// <summary>
-        /// 同步獲取圖層列表
-        /// </summary>
-        private List<LayerInfo> GetLayersSync()
-        {
-            var layers = new List<LayerInfo>();
-            
-            try
-            {
-                var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
-                if (doc?.Database == null) return layers;
-
-                using (var tr = doc.Database.TransactionManager.StartTransaction())
-                {
-                    var layerTable = tr.GetObject(doc.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
-                    if (layerTable == null) return layers;
-
-                    foreach (ObjectId layerId in layerTable)
-                    {
-                        if (tr.GetObject(layerId, OpenMode.ForRead) is LayerTableRecord ltr)
-                        {
-                            layers.Add(new LayerInfo
-                            {
-                                Name = ltr.Name,
-                                IsLocked = ltr.IsLocked,
-                                IsFrozen = ltr.IsFrozen,
-                                IsOff = ltr.IsOff,
-                                Color = ltr.Color.ColorIndex.ToString(),
-                                LineWeight = ltr.LineWeight,
-                                PlotStyleName = ltr.PlotStyleName,
-                                IsPlottable = ltr.IsPlottable
-                            });
-                        }
-                    }
-                    tr.Commit();
-                }
-            }
-            catch (System.Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"獲取圖層失敗: {ex.Message}");
-            }
-
-            return layers.OrderBy(l => l.Name).ToList();
-        }
-
         private void previewButton_Click(object sender, EventArgs e)
         {
             if (this.layerComboBox.SelectedItem is string selectedItem)
             {
                 string layerName = selectedItem.Split(' ')[0];
-                string message = "轉換預覽:\n\n";
+                string message = "預覽轉換操作:\n\n";
                 message += $"物件數量: {_entityIds.Length}\n";
                 message += $"目標圖層: {layerName}\n\n";
                 message += "轉換設定:\n";
                 message += $"? 自動解鎖目標圖層: {(this.unlockTargetLayerCheckBox.Checked ? "是" : "否")}\n";
                 message += $"? 自動創建圖層: {(this.createLayerCheckBox.Checked ? "是" : "否")}\n";
-                message += $"? 強制轉換鎖定物件: {(this.handleLockedObjectsCheckBox.Checked ? "是，包括鎖定圖層上的圖塊" : "否，跳過鎖定圖層上的物件")}\n";
-                message += $"? 圖塊分解重組法: {(this.blockExplodeMethodCheckBox.Checked ? "是，對鎖定圖塊使用分解重組" : "否，使用傳統方法")}\n";
-                
-                if (this.handleLockedObjectsCheckBox.Checked && this.blockExplodeMethodCheckBox.Checked)
-                {
-                    message += "\n?? 注意：分解重組法會暫時分解鎖定圖塊到基礎元素，轉換圖層後重新組合成相同的圖塊。";
-                    message += "\n這種方法更安全可靠，但會重新創建圖塊定義。";
-                }
-                else if (this.handleLockedObjectsCheckBox.Checked)
-                {
-                    message += "\n?? 注意：啟用強制轉換會暫時解鎖源圖層，轉換完成後自動恢復鎖定狀態。";
-                }
+                message += $"? 處理鎖定物件: {(this.handleLockedObjectsCheckBox.Checked ? "是" : "否")}\n";
                 
                 MessageBox.Show(message, "轉換預覽", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
@@ -168,28 +120,12 @@ namespace AutoCAD_Layer_Manger.UI
                     
                     string layerName = selectedItem.Split(' ')[0];
                     
-                    // 創建轉換選項
-                    var options = new ConversionOptions
-                    {
-                        CreateTargetLayer = this.createLayerCheckBox.Checked,
-                        UnlockTargetLayer = this.unlockTargetLayerCheckBox.Checked,
-                        ForceConvertLockedObjects = this.handleLockedObjectsCheckBox.Checked,
-                        UseBlockExplodeMethod = this.blockExplodeMethodCheckBox.Checked,
-                        ProcessBlocks = true,
-                        MaxDepth = 50
-                    };
-                    
-                    // 使用同步方法執行轉換
-                    Result = ExecuteConversionSync(layerName, options);
+                    Result = ExecuteConversion(layerName);
                     
                     this.statusLabel.Text = "轉換完成！";
                     
                     string resultMessage = "轉換完成！\n\n";
                     resultMessage += $"成功轉換: {Result.ConvertedCount} 個物件\n";
-                    if (Result.SkippedCount > 0)
-                    {
-                        resultMessage += $"跳過: {Result.SkippedCount} 個物件\n";
-                    }
                     resultMessage += $"錯誤: {Result.ErrorCount} 個\n";
                     
                     if (Result.Errors.Any())
@@ -199,11 +135,6 @@ namespace AutoCAD_Layer_Manger.UI
                         {
                             resultMessage += $"\n... 還有 {Result.Errors.Count - 3} 個錯誤";
                         }
-                    }
-                    
-                    if (options.UseBlockExplodeMethod && this.handleLockedObjectsCheckBox.Checked)
-                    {
-                        resultMessage += "\n\n? 已使用圖塊分解重組技術處理鎖定圖塊";
                     }
                     
                     MessageBox.Show(resultMessage, "轉換結果", 
@@ -230,10 +161,7 @@ namespace AutoCAD_Layer_Manger.UI
             }
         }
 
-        /// <summary>
-        /// 同步執行轉換
-        /// </summary>
-        private ConversionResult ExecuteConversionSync(string targetLayer, ConversionOptions options)
+        private ConversionResult ExecuteConversion(string targetLayer)
         {
             var result = new ConversionResult();
             
@@ -245,7 +173,7 @@ namespace AutoCAD_Layer_Manger.UI
                 using (var tr = doc.Database.TransactionManager.StartTransaction())
                 {
                     // 如果需要，創建圖層
-                    if (options.CreateTargetLayer)
+                    if (this.createLayerCheckBox.Checked)
                     {
                         var layerTable = tr.GetObject(doc.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
                         if (layerTable != null && !layerTable.Has(targetLayer))
@@ -258,7 +186,7 @@ namespace AutoCAD_Layer_Manger.UI
                     }
 
                     // 如果需要，解鎖目標圖層
-                    if (options.UnlockTargetLayer)
+                    if (this.unlockTargetLayerCheckBox.Checked)
                     {
                         var layerTable = tr.GetObject(doc.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
                         if (layerTable != null && layerTable.Has(targetLayer))
@@ -272,20 +200,37 @@ namespace AutoCAD_Layer_Manger.UI
                         }
                     }
 
-                    // 使用EntityConverter進行轉換
+                    // 轉換物件
                     foreach (var objId in _entityIds)
                     {
                         try
                         {
                             if (tr.GetObject(objId, OpenMode.ForRead) is Entity entity)
                             {
-                                var entityResult = _entityConverter.ConvertEntityToLayer(
-                                    tr, entity, targetLayer, Matrix3d.Identity, options);
-                                
-                                result.ConvertedCount += entityResult.ConvertedCount;
-                                result.SkippedCount += entityResult.SkippedCount;
-                                result.ErrorCount += entityResult.ErrorCount;
-                                result.Errors.AddRange(entityResult.Errors);
+                                bool canConvert = true;
+                                if (!this.handleLockedObjectsCheckBox.Checked && entity.Layer != null)
+                                {
+                                    var layerTable = tr.GetObject(doc.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
+                                    if (layerTable != null && layerTable.Has(entity.Layer))
+                                    {
+                                        var sourceLayerRecord = tr.GetObject(layerTable[entity.Layer], OpenMode.ForRead) as LayerTableRecord;
+                                        if (sourceLayerRecord != null && sourceLayerRecord.IsLocked)
+                                        {
+                                            canConvert = false;
+                                        }
+                                    }
+                                }
+
+                                if (canConvert)
+                                {
+                                    entity.UpgradeOpen();
+                                    entity.Layer = targetLayer;
+                                    result.ConvertedCount++;
+                                }
+                                else
+                                {
+                                    result.Errors.Add("物件在鎖定圖層上，已跳過");
+                                }
                             }
                         }
                         catch (System.Exception ex)
@@ -302,10 +247,20 @@ namespace AutoCAD_Layer_Manger.UI
             {
                 result.ErrorCount++;
                 result.Errors.Add($"轉換失敗: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"ExecuteConversionSync error: {ex}");
+                System.Diagnostics.Debug.WriteLine($"ExecuteConversion error: {ex}");
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 轉換結果類別
+        /// </summary>
+        public class ConversionResult
+        {
+            public int ConvertedCount { get; set; }
+            public int ErrorCount { get; set; }
+            public List<string> Errors { get; set; } = new List<string>();
         }
     }
 }

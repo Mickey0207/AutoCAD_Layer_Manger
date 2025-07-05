@@ -231,18 +231,6 @@ namespace AutoCAD_Layer_Manger.Services
 
                 using (var tr = db.TransactionManager.StartTransaction())
                 {
-                    // 如果需要，創建目標圖層
-                    if (options.CreateTargetLayer && !LayerExists(targetLayer))
-                    {
-                        CreateLayer(targetLayer, null);
-                    }
-
-                    // 如果需要，解鎖目標圖層
-                    if (options.UnlockTargetLayer)
-                    {
-                        UnlockLayer(targetLayer);
-                    }
-
                     int totalCount = entityList.Count;
                     int processedCount = 0;
 
@@ -257,8 +245,6 @@ namespace AutoCAD_Layer_Manger.Services
                                 
                                 result.ConvertedCount += entityResult.ConvertedCount;
                                 result.SkippedCount += entityResult.SkippedCount;
-                                result.ErrorCount += entityResult.ErrorCount;
-                                result.Errors.AddRange(entityResult.Errors);
                             }
                         }
                         catch (System.Exception ex)
@@ -301,18 +287,14 @@ namespace AutoCAD_Layer_Manger.Services
     }
 
     /// <summary>
-    /// 轉換選項 - 增強版本
+    /// 轉換選項
     /// </summary>
     public class ConversionOptions
     {
-        public bool CreateTargetLayer { get; set; } = true;
-        public bool SkipLockedObjects { get; set; } = false; // 改為預設不跳過
+        public bool SkipLockedObjects { get; set; } = true;
         public bool UnlockTargetLayer { get; set; } = true;
         public bool ProcessBlocks { get; set; } = true;
-        public bool ForceConvertLockedObjects { get; set; } = true; // 新增：強制轉換鎖定物件
-        public bool RestoreLayerLockState { get; set; } = true; // 新增：轉換後恢復圖層鎖定狀態
-        public bool UseBlockExplodeMethod { get; set; } = true; // 新增：對鎖定圖塊使用分解重組法
-        public int MaxDepth { get; set; } = 50; // 防止無限遞迴最大深度
+        public int MaxDepth { get; set; } = 50; // 防止無限遞迴
     }
 
     /// <summary>

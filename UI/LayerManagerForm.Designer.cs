@@ -33,7 +33,6 @@ namespace AutoCAD_Layer_Manger.UI
             this.previewButton = new System.Windows.Forms.Button();
             this.layerComboBox = new System.Windows.Forms.ComboBox();
             this.settingsGroupBox = new System.Windows.Forms.GroupBox();
-            this.blockExplodeMethodCheckBox = new System.Windows.Forms.CheckBox();
             this.handleLockedObjectsCheckBox = new System.Windows.Forms.CheckBox();
             this.createLayerCheckBox = new System.Windows.Forms.CheckBox();
             this.unlockTargetLayerCheckBox = new System.Windows.Forms.CheckBox();
@@ -87,28 +86,15 @@ namespace AutoCAD_Layer_Manger.UI
             // 
             // settingsGroupBox
             // 
-            this.settingsGroupBox.Controls.Add(this.blockExplodeMethodCheckBox);
             this.settingsGroupBox.Controls.Add(this.handleLockedObjectsCheckBox);
             this.settingsGroupBox.Controls.Add(this.createLayerCheckBox);
             this.settingsGroupBox.Controls.Add(this.unlockTargetLayerCheckBox);
             this.settingsGroupBox.Location = new System.Drawing.Point(12, 150);
             this.settingsGroupBox.Name = "settingsGroupBox";
-            this.settingsGroupBox.Size = new System.Drawing.Size(480, 180);
+            this.settingsGroupBox.Size = new System.Drawing.Size(480, 150);
             this.settingsGroupBox.TabIndex = 2;
             this.settingsGroupBox.TabStop = false;
             this.settingsGroupBox.Text = "轉換設定";
-            // 
-            // blockExplodeMethodCheckBox
-            // 
-            this.blockExplodeMethodCheckBox.AutoSize = true;
-            this.blockExplodeMethodCheckBox.Checked = true;
-            this.blockExplodeMethodCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.blockExplodeMethodCheckBox.Location = new System.Drawing.Point(15, 120);
-            this.blockExplodeMethodCheckBox.Name = "blockExplodeMethodCheckBox";
-            this.blockExplodeMethodCheckBox.Size = new System.Drawing.Size(279, 16);
-            this.blockExplodeMethodCheckBox.TabIndex = 3;
-            this.blockExplodeMethodCheckBox.Text = "對鎖定圖塊使用分解重組法(推薦,更安全可靠)";
-            this.blockExplodeMethodCheckBox.UseVisualStyleBackColor = true;
             // 
             // handleLockedObjectsCheckBox
             // 
@@ -117,9 +103,9 @@ namespace AutoCAD_Layer_Manger.UI
             this.handleLockedObjectsCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
             this.handleLockedObjectsCheckBox.Location = new System.Drawing.Point(15, 90);
             this.handleLockedObjectsCheckBox.Name = "handleLockedObjectsCheckBox";
-            this.handleLockedObjectsCheckBox.Size = new System.Drawing.Size(219, 16);
+            this.handleLockedObjectsCheckBox.Size = new System.Drawing.Size(147, 16);
             this.handleLockedObjectsCheckBox.TabIndex = 2;
-            this.handleLockedObjectsCheckBox.Text = "強制轉換鎖定圖層上的物件(包括圖塊)";
+            this.handleLockedObjectsCheckBox.Text = "處理鎖定圖層上的物件";
             this.handleLockedObjectsCheckBox.UseVisualStyleBackColor = true;
             // 
             // createLayerCheckBox
@@ -150,7 +136,7 @@ namespace AutoCAD_Layer_Manger.UI
             // 
             this.statusLabel.AutoSize = true;
             this.statusLabel.ForeColor = System.Drawing.Color.Gray;
-            this.statusLabel.Location = new System.Drawing.Point(12, 350);
+            this.statusLabel.Location = new System.Drawing.Point(12, 320);
             this.statusLabel.Name = "statusLabel";
             this.statusLabel.Size = new System.Drawing.Size(53, 12);
             this.statusLabel.TabIndex = 3;
@@ -160,7 +146,7 @@ namespace AutoCAD_Layer_Manger.UI
             // 
             this.convertButton.BackColor = System.Drawing.Color.LightGreen;
             this.convertButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
-            this.convertButton.Location = new System.Drawing.Point(330, 390);
+            this.convertButton.Location = new System.Drawing.Point(330, 360);
             this.convertButton.Name = "convertButton";
             this.convertButton.Size = new System.Drawing.Size(80, 35);
             this.convertButton.TabIndex = 4;
@@ -171,7 +157,7 @@ namespace AutoCAD_Layer_Manger.UI
             // cancelButton
             // 
             this.cancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.cancelButton.Location = new System.Drawing.Point(420, 390);
+            this.cancelButton.Location = new System.Drawing.Point(420, 360);
             this.cancelButton.Name = "cancelButton";
             this.cancelButton.Size = new System.Drawing.Size(75, 35);
             this.cancelButton.TabIndex = 5;
@@ -184,7 +170,7 @@ namespace AutoCAD_Layer_Manger.UI
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.cancelButton;
-            this.ClientSize = new System.Drawing.Size(520, 450);
+            this.ClientSize = new System.Drawing.Size(520, 420);
             this.Controls.Add(this.cancelButton);
             this.Controls.Add(this.convertButton);
             this.Controls.Add(this.statusLabel);
@@ -215,7 +201,6 @@ namespace AutoCAD_Layer_Manger.UI
         private System.Windows.Forms.CheckBox handleLockedObjectsCheckBox;
         private System.Windows.Forms.CheckBox createLayerCheckBox;
         private System.Windows.Forms.CheckBox unlockTargetLayerCheckBox;
-        private System.Windows.Forms.CheckBox blockExplodeMethodCheckBox;
         private System.Windows.Forms.Label statusLabel;
         private System.Windows.Forms.Button convertButton;
         private System.Windows.Forms.Button cancelButton;
