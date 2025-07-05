@@ -41,20 +41,9 @@
     <Compile Update="UI\LayerManagerForm.Designer.cs">
       <DependentUpon>LayerManagerForm.cs</DependentUpon>
     </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- 移除不需要的檔案 -->
-    <Compile Remove="LayerManagerForm.cs" />
-    <Compile Remove="LayerManagerForm.Designer.cs" />
-    <Compile Remove="ProgressForm.cs" />
-    <Compile Remove="ProgressForm.Designer.cs" />
-    <Compile Remove="myCommands.cs" />
-    <Compile Remove="Converters.cs" />
-    <Compile Remove="LayerManagerUI.xaml.cs" />
-    <Compile Remove="ProgressDialog.xaml.cs" />
-    <None Remove="LayerManagerUI.xaml" />
-    <None Remove="ProgressDialog.xaml" />
+    <EmbeddedResource Update="UI\LayerManagerForm.resx">
+      <DependentUpon>LayerManagerForm.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>
