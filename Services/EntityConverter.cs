@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
@@ -9,7 +9,7 @@ using AcadApp = Autodesk.AutoCAD.ApplicationServices.Application;
 namespace AutoCAD_Layer_Manger.Services
 {
     /// <summary>
-    /// ¹êÅéÂà´«¾¹±µ¤f
+    /// å¯¦é«”è½‰æ›å™¨æ¥å£
     /// </summary>
     public interface IEntityConverter
     {
@@ -18,7 +18,7 @@ namespace AutoCAD_Layer_Manger.Services
     }
 
     /// <summary>
-    /// ¼W±jª©¹êÅéÂà´«¾¹ - ¤ä´©¹Ï¶ô¤À¸Ñ­«²Õªk
+    /// å¢å¼·ç‰ˆå¯¦é«”è½‰æ›å™¨ - æ”¯æ´åœ–å¡Šåˆ†è§£é‡çµ„æ³•
     /// </summary>
     public class EntityConverter : IEntityConverter
     {
@@ -26,7 +26,7 @@ namespace AutoCAD_Layer_Manger.Services
         {
             typeof(Line), typeof(Arc), typeof(Circle), typeof(Polyline),
             typeof(Polyline2d), typeof(Polyline3d), typeof(Spline),
-            typeof(Ellipse), typeof(DBPoint), typeof(Ray), typeof(Xline),
+            typeof(Ellipse), typeof(Point), typeof(Ray), typeof(Xline),
             typeof(Hatch), typeof(Solid), typeof(Face), typeof(Trace),
             typeof(MText), typeof(DBText), typeof(Dimension), typeof(Leader),
             typeof(MLeader), typeof(Wipeout), typeof(Autodesk.AutoCAD.DatabaseServices.Image),
@@ -44,43 +44,34 @@ namespace AutoCAD_Layer_Manger.Services
         {
             var result = new ConversionResult();
 
-            // ¨¾¤îµL­­»¼°j
+            // é˜²æ­¢ç„¡é™éè¿´
             if (depth > options.MaxDepth)
             {
                 result.ErrorCount++;
-                result.Errors.Add($"¹F¨ì³Ì¤j»¼°j²`«× {options.MaxDepth}");
+                result.Errors.Add($"é”åˆ°æœ€å¤§éè¿´æ·±åº¦ {options.MaxDepth}");
                 return result;
             }
 
             try
             {
-                // ÀË¬d¹êÅé°ò¥»ª¬ºA
+                // æª¢æŸ¥å¯¦é«”åŸºæœ¬ç‹€æ…‹
                 if (entity == null)
                 {
                     result.ErrorCount++;
-                    result.Errors.Add("¹êÅé¬°null");
+                    result.Errors.Add("å¯¦é«”ç‚ºnull");
                     return result;
                 }
 
                 if (entity.IsErased)
                 {
                     result.SkippedCount++;
-                    result.Errors.Add("¹êÅé¤w³Q§R°£");
+                    result.Errors.Add("å¯¦é«”å·²è¢«åˆªé™¤");
                     return result;
-                }
-
-                // ÀË¬d¬O§_¬°Âê©w¹Ï¼h¤Wªº¼Ğµù©Î°ÊºA¹Ï¶ô
-                if (options.ProcessAnnotationsOnLockedLayers && IsEntityOnLockedLayer(tr, entity))
-                {
-                    if (IsAnnotationOrDynamicBlock(entity))
-                    {
-                        return ProcessAnnotationOnLockedLayer(tr, entity, targetLayer, options);
-                    }
                 }
 
                 if (entity is BlockReference blockRef && options.ProcessBlocks)
                 {
-                    // ¹Ï¶ô³B²zÅŞ¿è - ¨Ï¥Î¦h­«µ¦²¤
+                    // åœ–å¡Šè™•ç†é‚è¼¯ - ä½¿ç”¨å¤šé‡ç­–ç•¥
                     result = ProcessBlockReferenceWithStrategy(tr, blockRef, targetLayer, transform, options, depth);
                 }
                 else if (IsGeometricEntity(entity))
@@ -89,21 +80,21 @@ namespace AutoCAD_Layer_Manger.Services
                 }
                 else
                 {
-                    // ¤£¤ä´©ªº¹êÅéÃş«¬¡A´£¨Ñ¸Ô²Ó¤ÀªR
+                    // ä¸æ”¯æ´çš„å¯¦é«”é¡å‹ï¼Œæä¾›è©³ç´°åˆ†æ
                     result.SkippedCount = 1;
                     string analysis = AnalyzeConversionFailure(tr, entity, options);
-                    result.Errors.Add($"µLªk³B²z¹êÅé {entity.GetType().Name}: {analysis}");
+                    result.Errors.Add($"ç„¡æ³•è™•ç†å¯¦é«” {entity.GetType().Name}: {analysis}");
                 }
             }
             catch (Autodesk.AutoCAD.Runtime.Exception ex) when (ex.ErrorStatus == ErrorStatus.OnLockedLayer)
             {
                 result.ErrorCount++;
-                result.Errors.Add($"¹Ï¶ô³B²z¥¢±Ñ: eOnLockedLayer - ±N¹Á¸Õ¨Ï¥Î¹Ï¶ô½s¿è¾¹¤èªk");
+                result.Errors.Add($"åœ–å¡Šè™•ç†å¤±æ•—: eOnLockedLayer - å°‡å˜—è©¦ä½¿ç”¨åœ–å¡Šç·¨è¼¯å™¨æ–¹æ³•");
             }
             catch (System.Exception ex)
             {
                 result.ErrorCount++;
-                result.Errors.Add($"Âà´«¹êÅé®Éµo¥Í¿ù»~: {ex.Message}");
+                result.Errors.Add($"è½‰æ›å¯¦é«”æ™‚ç™¼ç”ŸéŒ¯èª¤: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"ConvertEntityToLayer exception: {ex}");
             }
 
@@ -111,7 +102,7 @@ namespace AutoCAD_Layer_Manger.Services
         }
 
         /// <summary>
-        /// ¨Ï¥Î´¼¯à¦h­«µ¦²¤³B²z¹Ï¶ô°Ñ¦Ò
+        /// ä½¿ç”¨æ™ºèƒ½å¤šé‡ç­–ç•¥è™•ç†åœ–å¡Šåƒè€ƒ
         /// </summary>
         private ConversionResult ProcessBlockReferenceWithStrategy(
             Transaction tr, 
@@ -128,10 +119,10 @@ namespace AutoCAD_Layer_Manger.Services
             {
                 bool isOnLockedLayer = IsEntityOnLockedLayer(tr, blockRef);
                 
-                // Àò¨ú­n¹Á¸Õªº¤èªk¦Cªí
+                // ç²å–è¦å˜—è©¦çš„æ–¹æ³•åˆ—è¡¨
                 var methodsToTry = options.GetEnabledMethods();
                 
-                // ¦pªG¬OÂê©w¹Ï¼h¥B¤£±j¨îÂà´«¡A¥u¹Á¸Õ°ª¯Å¤èªk
+                // å¦‚æœæ˜¯é–å®šåœ–å±¤ä¸”ä¸å¼·åˆ¶è½‰æ›ï¼Œåªå˜—è©¦é«˜ç´šæ–¹æ³•
                 if (isOnLockedLayer && !options.ForceConvertLockedObjects)
                 {
                     methodsToTry.RemoveAll(m => m == BlockProcessingMethod.Traditional);
@@ -145,44 +136,44 @@ namespace AutoCAD_Layer_Manger.Services
                         {
                             BlockProcessingMethod.Traditional => ProcessBlockReference(tr, blockRef, targetLayer, transform, options, depth),
                             BlockProcessingMethod.ExplodeRecombine => ProcessBlockReferenceWithExplode(tr, blockRef, targetLayer, transform, options, depth),
-                            BlockProcessingMethod.ReferenceEdit => CreateNotImplementedResult("²{¦a½s¿èªk¼È¥¼§¹¥ş¹ê²{"),
-                            BlockProcessingMethod.BlockEditor => CreateNotImplementedResult("¹Ï¶ô½s¿è¾¹ªk¼È¥¼§¹¥ş¹ê²{"),
-                            _ => new ConversionResult { ErrorCount = 1, Errors = { "¥¼ª¾ªº³B²z¤èªk" } }
+                            BlockProcessingMethod.ReferenceEdit => CreateNotImplementedResult("ç¾åœ°ç·¨è¼¯æ³•æš«æœªå®Œå…¨å¯¦ç¾"),
+                            BlockProcessingMethod.BlockEditor => CreateNotImplementedResult("åœ–å¡Šç·¨è¼¯å™¨æ³•æš«æœªå®Œå…¨å¯¦ç¾"),
+                            _ => new ConversionResult { ErrorCount = 1, Errors = { "æœªçŸ¥çš„è™•ç†æ–¹æ³•" } }
                         };
 
-                        attemptHistory.Add($"{GetMethodDisplayName(method)}: {methodResult.ConvertedCount}¦¨¥\/{methodResult.ErrorCount}¿ù»~");
+                        attemptHistory.Add($"{GetMethodDisplayName(method)}: {methodResult.ConvertedCount}æˆåŠŸ/{methodResult.ErrorCount}éŒ¯èª¤");
 
-                        // ¦pªG¦¨¥\Âà´«¤Fª«¥ó¡Aªğ¦^µ²ªG
+                        // å¦‚æœæˆåŠŸè½‰æ›äº†ç‰©ä»¶ï¼Œè¿”å›çµæœ
                         if (methodResult.ConvertedCount > 0)
                         {
-                            methodResult.Errors.Insert(0, $"? ¨Ï¥Î {GetMethodDisplayName(method)} ¦¨¥\³B²z");
+                            methodResult.Errors.Insert(0, $"âœ… ä½¿ç”¨ {GetMethodDisplayName(method)} æˆåŠŸè™•ç†");
                             return methodResult;
                         }
 
-                        // ¦pªG¨S¦³¿ù»~¦ı¤]¨S¦³Âà´«¡]¥i¯à¸õ¹L¡^¡A¤]µø¬°¦¨¥\
+                        // å¦‚æœæ²’æœ‰éŒ¯èª¤ä½†ä¹Ÿæ²’æœ‰è½‰æ›ï¼ˆå¯èƒ½è·³éï¼‰ï¼Œä¹Ÿè¦–ç‚ºæˆåŠŸ
                         if (methodResult.ErrorCount == 0)
                         {
-                            methodResult.Errors.Add($"¨Ï¥Î {GetMethodDisplayName(method)} ³B²z¡]µL¿ù»~¡^");
+                            methodResult.Errors.Add($"ä½¿ç”¨ {GetMethodDisplayName(method)} è™•ç†ï¼ˆç„¡éŒ¯èª¤ï¼‰");
                             return methodResult;
                         }
 
-                        // ¦pªG±Ò¥Î¦Û°Ê­«¸Õ¡AÄ~Äò¹Á¸Õ¤U¤@­Ó¤èªk
+                        // å¦‚æœå•Ÿç”¨è‡ªå‹•é‡è©¦ï¼Œç¹¼çºŒå˜—è©¦ä¸‹ä¸€å€‹æ–¹æ³•
                         if (!options.EnableAutoRetry)
                         {
-                            // ¤£±Ò¥Î¦Û°Ê­«¸Õ¡Aªğ¦^²Ä¤@­Ó¤èªkªºµ²ªG
-                            methodResult.Errors.Add($"¨Ï¥Î {GetMethodDisplayName(method)} ³B²z¡A¥¼±Ò¥Î¦Û°Ê­«¸Õ");
+                            // ä¸å•Ÿç”¨è‡ªå‹•é‡è©¦ï¼Œè¿”å›ç¬¬ä¸€å€‹æ–¹æ³•çš„çµæœ
+                            methodResult.Errors.Add($"ä½¿ç”¨ {GetMethodDisplayName(method)} è™•ç†ï¼Œæœªå•Ÿç”¨è‡ªå‹•é‡è©¦");
                             return methodResult;
                         }
 
-                        // ²Ö¿n¿ù»~«H®§
+                        // ç´¯ç©éŒ¯èª¤ä¿¡æ¯
                         result.Errors.AddRange(methodResult.Errors);
                     }
                     catch (System.Exception ex)
                     {
-                        attemptHistory.Add($"{GetMethodDisplayName(method)}: ²§±` - {ex.Message}");
-                        result.Errors.Add($"{GetMethodDisplayName(method)} ²§±`: {ex.Message}");
+                        attemptHistory.Add($"{GetMethodDisplayName(method)}: ç•°å¸¸ - {ex.Message}");
+                        result.Errors.Add($"{GetMethodDisplayName(method)} ç•°å¸¸: {ex.Message}");
                         
-                        // ¦pªG¤£±Ò¥Î¦Û°Ê­«¸Õ¡A©ß¥X²§±`
+                        // å¦‚æœä¸å•Ÿç”¨è‡ªå‹•é‡è©¦ï¼Œæ‹‹å‡ºç•°å¸¸
                         if (!options.EnableAutoRetry)
                         {
                             break;
@@ -190,38 +181,38 @@ namespace AutoCAD_Layer_Manger.Services
                     }
                 }
 
-                // ©Ò¦³¤èªk³£¹Á¸Õ¹L¤F¡Aªğ¦^¥¢±Ñµ²ªG
+                // æ‰€æœ‰æ–¹æ³•éƒ½å˜—è©¦éäº†ï¼Œè¿”å›å¤±æ•—çµæœ
                 result.ErrorCount++;
-                result.Errors.Add($"? ©Ò¦³³B²z¤èªk³£¥¢±Ñ¤F");
-                result.Errors.Add($"¹Á¸Õ°O¿ı: {string.Join(" ¡÷ ", attemptHistory)}");
+                result.Errors.Add($"âŒ æ‰€æœ‰è™•ç†æ–¹æ³•éƒ½å¤±æ•—äº†");
+                result.Errors.Add($"å˜—è©¦è¨˜éŒ„: {string.Join(" â†’ ", attemptHistory)}");
                 
                 return result;
             }
             catch (System.Exception ex)
             {
                 result.ErrorCount++;
-                result.Errors.Add($"¹Ï¶ôµ¦²¤³B²z²§±`: {ex.Message}");
+                result.Errors.Add($"åœ–å¡Šç­–ç•¥è™•ç†ç•°å¸¸: {ex.Message}");
                 return result;
             }
         }
 
         /// <summary>
-        /// Àò¨ú¤èªkªºÅã¥Ü¦WºÙ
+        /// ç²å–æ–¹æ³•çš„é¡¯ç¤ºåç¨±
         /// </summary>
         private string GetMethodDisplayName(BlockProcessingMethod method)
         {
             return method switch
             {
-                BlockProcessingMethod.Traditional => "¶Ç²Î¤èªk",
-                BlockProcessingMethod.ExplodeRecombine => "¤À¸Ñ­«²Õªk",
-                BlockProcessingMethod.ReferenceEdit => "²{¦a½s¿èªk",
-                BlockProcessingMethod.BlockEditor => "¹Ï¶ô½s¿è¾¹ªk",
-                _ => "¥¼ª¾¤èªk"
+                BlockProcessingMethod.Traditional => "å‚³çµ±æ–¹æ³•",
+                BlockProcessingMethod.ExplodeRecombine => "åˆ†è§£é‡çµ„æ³•",
+                BlockProcessingMethod.ReferenceEdit => "ç¾åœ°ç·¨è¼¯æ³•",
+                BlockProcessingMethod.BlockEditor => "åœ–å¡Šç·¨è¼¯å™¨æ³•",
+                _ => "æœªçŸ¥æ–¹æ³•"
             };
         }
 
         /// <summary>
-        /// ¨Ï¥Î¤À¸Ñ­«²Õªk³B²zÂê©w¹Ï¼h¤Wªº¹Ï¶ô
+        /// ä½¿ç”¨åˆ†è§£é‡çµ„æ³•è™•ç†é–å®šåœ–å±¤ä¸Šçš„åœ–å¡Š
         /// </summary>
         private ConversionResult ProcessBlockReferenceWithExplode(
             Transaction tr, 
@@ -235,44 +226,44 @@ namespace AutoCAD_Layer_Manger.Services
             
             try
             {
-                // ÀË¬d¹Ï¶ô¬O§_¥i¥H¤À¸Ñ
+                // æª¢æŸ¥åœ–å¡Šæ˜¯å¦å¯ä»¥åˆ†è§£
                 if (!CanExplodeBlock(tr, blockRef))
                 {
                     result.ErrorCount++;
-                    result.Errors.Add($"¹Ï¶ô {blockRef.Name} µLªk¤À¸Ñ¡]¥i¯à¬O°ÊºA¹Ï¶ô©Î¨ü«OÅ@¹Ï¶ô¡^");
+                    result.Errors.Add($"åœ–å¡Š {blockRef.Name} ç„¡æ³•åˆ†è§£ï¼ˆå¯èƒ½æ˜¯å‹•æ…‹åœ–å¡Šæˆ–å—ä¿è­·åœ–å¡Šï¼‰");
                     return result;
                 }
 
-                // ¨BÆJ1: °O¿ı­ì©l¹Ï¶ô¸ê°T
+                // æ­¥é©Ÿ1: è¨˜éŒ„åŸå§‹åœ–å¡Šè³‡è¨Š
                 var originalBlockInfo = new BlockInfo
                 {
                     Name = blockRef.Name,
                     Position = blockRef.Position,
                     Rotation = blockRef.Rotation,
                     ScaleFactors = blockRef.ScaleFactors,
-                    Layer = targetLayer, // ·s¹Ï¶ôªº¹Ï¼h
+                    Layer = targetLayer, // æ–°åœ–å¡Šçš„åœ–å±¤
                     Attributes = ExtractAttributes(tr, blockRef)
                 };
 
-                // ¨BÆJ2: ¤À¸Ñ¹Ï¶ô¨ì°òÂ¦¤¸¯À
+                // æ­¥é©Ÿ2: åˆ†è§£åœ–å¡Šåˆ°åŸºç¤å…ƒç´ 
                 var explodedEntities = ExplodeBlockToBasicElements(tr, blockRef, transform, depth);
                 if (explodedEntities.Count == 0)
                 {
                     result.ErrorCount++;
-                    result.Errors.Add($"µLªk¤À¸Ñ¹Ï¶ô {blockRef.Name}");
+                    result.Errors.Add($"ç„¡æ³•åˆ†è§£åœ–å¡Š {blockRef.Name}");
                     return result;
                 }
 
-                // ¨BÆJ3: ¥ıÂà´«°òÂ¦¤¸¯Àªº¹Ï¼h¡]¦b§R°£­ì¹Ï¶ô¤§«e¡^
+                // æ­¥é©Ÿ3: å…ˆè½‰æ›åŸºç¤å…ƒç´ çš„åœ–å±¤ï¼ˆåœ¨åˆªé™¤åŸåœ–å¡Šä¹‹å‰ï¼‰
                 var convertedEntities = new List<Entity>();
                 foreach (var entity in explodedEntities)
                 {
                     try
                     {
-                        // ÀË¬d¹êÅé¬O§_¦bÂê©w¹Ï¼h¤W
+                        // æª¢æŸ¥å¯¦é«”æ˜¯å¦åœ¨é–å®šåœ–å±¤ä¸Š
                         if (IsEntityOnLockedLayer(tr, entity))
                         {
-                            // ¹Á¸Õ¼È®É¸ÑÂê¨ÃÂà´«
+                            // å˜—è©¦æš«æ™‚è§£é–ä¸¦è½‰æ›
                             if (TryConvertEntityLayerWithUnlock(tr, entity, targetLayer, options))
                             {
                                 convertedEntities.Add(entity);
@@ -280,10 +271,10 @@ namespace AutoCAD_Layer_Manger.Services
                             }
                             else
                             {
-                                // ¦pªG¤´µMµLªkÂà´«¡A°O¿ı¿ù»~¦ıÄ~Äò³B²z¨ä¥L¤¸¯À
+                                // å¦‚æœä»ç„¶ç„¡æ³•è½‰æ›ï¼Œè¨˜éŒ„éŒ¯èª¤ä½†ç¹¼çºŒè™•ç†å…¶ä»–å…ƒç´ 
                                 result.ErrorCount++;
-                                result.Errors.Add($"°òÂ¦¤¸¯ÀÂà´«¥¢±Ñ: {entity.GetType().Name}");
-                                convertedEntities.Add(entity); // ¤´µM¥[¤J¡A«O«ùµ²ºc§¹¾ã
+                                result.Errors.Add($"åŸºç¤å…ƒç´ è½‰æ›å¤±æ•—: {entity.GetType().Name}");
+                                convertedEntities.Add(entity); // ä»ç„¶åŠ å…¥ï¼Œä¿æŒçµæ§‹å®Œæ•´
                             }
                         }
                         else
@@ -296,12 +287,12 @@ namespace AutoCAD_Layer_Manger.Services
                     catch (System.Exception ex)
                     {
                         result.ErrorCount++;
-                        result.Errors.Add($"Âà´«°òÂ¦¤¸¯À¥¢±Ñ: {ex.Message}");
-                        convertedEntities.Add(entity); // ¤´µM¥[¤J¡A«O«ùµ²ºc§¹¾ã
+                        result.Errors.Add($"è½‰æ›åŸºç¤å…ƒç´ å¤±æ•—: {ex.Message}");
+                        convertedEntities.Add(entity); // ä»ç„¶åŠ å…¥ï¼Œä¿æŒçµæ§‹å®Œæ•´
                     }
                 }
 
-                // ¨BÆJ4: ¹Á¸Õ­«·s²Õ¦X¦¨¹Ï¶ô
+                // æ­¥é©Ÿ4: å˜—è©¦é‡æ–°çµ„åˆæˆåœ–å¡Š
                 if (convertedEntities.Count > 0)
                 {
                     try
@@ -309,21 +300,21 @@ namespace AutoCAD_Layer_Manger.Services
                         var newBlockRef = RecreateBlockFromEntities(tr, convertedEntities, originalBlockInfo);
                         if (newBlockRef != null)
                         {
-                            // ¨BÆJ5: ¦¨¥\«á¤~§R°£­ì©l¹Ï¶ô
+                            // æ­¥é©Ÿ5: æˆåŠŸå¾Œæ‰åˆªé™¤åŸå§‹åœ–å¡Š
                             blockRef.UpgradeOpen();
                             blockRef.Erase();
-                            result.ConvertedCount++; // ¹Ï¶ô¥»¨­¤]ºâÂà´«¦¨¥\
+                            result.ConvertedCount++; // åœ–å¡Šæœ¬èº«ä¹Ÿç®—è½‰æ›æˆåŠŸ
                         }
                         else
                         {
                             result.ErrorCount++;
-                            result.Errors.Add($"­«·s³Ğ«Ø¹Ï¶ô {originalBlockInfo.Name} ¥¢±Ñ");
+                            result.Errors.Add($"é‡æ–°å‰µå»ºåœ–å¡Š {originalBlockInfo.Name} å¤±æ•—");
                             
-                            // ¦pªG­«²Õ¥¢±Ñ¡A±N¤À¸Ñªº¤¸¯À¥[¤J¨ì¼Ò«¬ªÅ¶¡
+                            // å¦‚æœé‡çµ„å¤±æ•—ï¼Œå°‡åˆ†è§£çš„å…ƒç´ åŠ å…¥åˆ°æ¨¡å‹ç©ºé–“
                             AddEntitiesToModelSpace(tr, convertedEntities);
                             result.ConvertedCount += convertedEntities.Count;
                             
-                            // ¤´µM§R°£­ì¹Ï¶ô
+                            // ä»ç„¶åˆªé™¤åŸåœ–å¡Š
                             blockRef.UpgradeOpen();
                             blockRef.Erase();
                         }
@@ -331,9 +322,9 @@ namespace AutoCAD_Layer_Manger.Services
                     catch (System.Exception ex)
                     {
                         result.ErrorCount++;
-                        result.Errors.Add($"¹Ï¶ô­«²Õ¹Lµ{¥¢±Ñ: {ex.Message}");
+                        result.Errors.Add($"åœ–å¡Šé‡çµ„éç¨‹å¤±æ•—: {ex.Message}");
                         
-                        // §Y¨Ï­«²Õ¥¢±Ñ¡A¤]¹Á¸Õ«O¦s¤À¸Ñªº¤¸¯À
+                        // å³ä½¿é‡çµ„å¤±æ•—ï¼Œä¹Ÿå˜—è©¦ä¿å­˜åˆ†è§£çš„å…ƒç´ 
                         try
                         {
                             AddEntitiesToModelSpace(tr, convertedEntities);
@@ -344,46 +335,46 @@ namespace AutoCAD_Layer_Manger.Services
                         }
                         catch (System.Exception ex2)
                         {
-                            result.Errors.Add($"«O¦s¤À¸Ñ¤¸¯À¥¢±Ñ: {ex2.Message}");
+                            result.Errors.Add($"ä¿å­˜åˆ†è§£å…ƒç´ å¤±æ•—: {ex2.Message}");
                         }
                     }
                 }
                 else
                 {
                     result.ErrorCount++;
-                    result.Errors.Add($"¨S¦³¥iÂà´«ªº°òÂ¦¤¸¯À");
+                    result.Errors.Add($"æ²’æœ‰å¯è½‰æ›çš„åŸºç¤å…ƒç´ ");
                 }
             }
             catch (System.Exception ex)
             {
                 result.ErrorCount++;
-                result.Errors.Add($"¹Ï¶ô¤À¸Ñ­«²Õªk³B²z¥¢±Ñ: {ex.Message}");
+                result.Errors.Add($"åœ–å¡Šåˆ†è§£é‡çµ„æ³•è™•ç†å¤±æ•—: {ex.Message}");
             }
 
             return result;
         }
 
         /// <summary>
-        /// ÀË¬d¹Ï¶ô¬O§_¥i¥H¤À¸Ñ
+        /// æª¢æŸ¥åœ–å¡Šæ˜¯å¦å¯ä»¥åˆ†è§£
         /// </summary>
         private bool CanExplodeBlock(Transaction tr, BlockReference blockRef)
         {
             try
             {
-                // ÀË¬d¹Ï¶ô©w¸q¬O§_¦s¦b
+                // æª¢æŸ¥åœ–å¡Šå®šç¾©æ˜¯å¦å­˜åœ¨
                 var btr = tr.GetObject(blockRef.BlockTableRecord, OpenMode.ForRead) as BlockTableRecord;
                 if (btr == null) return false;
 
-                // ÀË¬d¬O§_¬O°ÊºA¹Ï¶ô
+                // æª¢æŸ¥æ˜¯å¦æ˜¯å‹•æ…‹åœ–å¡Š
                 if (blockRef.IsDynamicBlock) 
                 {
-                    return true; // °ÊºA¹Ï¶ô¤]¥i¥H¹Á¸Õ¤À¸Ñ
+                    return true; // å‹•æ…‹åœ–å¡Šä¹Ÿå¯ä»¥å˜—è©¦åˆ†è§£
                 }
 
-                // ÀË¬d¬O§_¦³¤£¥i¤À¸Ñªº­­¨î
+                // æª¢æŸ¥æ˜¯å¦æœ‰ä¸å¯åˆ†è§£çš„é™åˆ¶
                 if (btr.Explodable == false) return false;
 
-                // ¹Á¸Õ³Ğ«Ø¤@­Ó´ú¸Õªº¤À¸Ñ¶°¦X
+                // å˜—è©¦å‰µå»ºä¸€å€‹æ¸¬è©¦çš„åˆ†è§£é›†åˆ
                 var testExplode = new DBObjectCollection();
                 blockRef.Explode(testExplode);
                 
@@ -396,7 +387,7 @@ namespace AutoCAD_Layer_Manger.Services
         }
 
         /// <summary>
-        /// ¤À¸Ñ¹Ï¶ô¨ì³Ì°òÂ¦ªº¤¸¯À¡]§ï¶iª©¡^
+        /// åˆ†è§£åœ–å¡Šåˆ°æœ€åŸºç¤çš„å…ƒç´ ï¼ˆæ”¹é€²ç‰ˆï¼‰
         /// </summary>
         private List<Entity> ExplodeBlockToBasicElements(Transaction tr, BlockReference blockRef, Matrix3d transform, int depth)
         {
@@ -404,14 +395,14 @@ namespace AutoCAD_Layer_Manger.Services
             
             try
             {
-                // ¨¾¤îµL­­»¼°j
+                // é˜²æ­¢ç„¡é™éè¿´
                 if (depth > 10)
                 {
-                    System.Diagnostics.Debug.WriteLine($"¤À¸Ñ²`«×¹L²`¡A°±¤î»¼°j");
+                    System.Diagnostics.Debug.WriteLine($"åˆ†è§£æ·±åº¦éæ·±ï¼Œåœæ­¢éè¿´");
                     return basicElements;
                 }
 
-                // ³Ğ«Ø¤À¸Ñ«áªº¹êÅé¶°¦X
+                // å‰µå»ºåˆ†è§£å¾Œçš„å¯¦é«”é›†åˆ
                 var explodedEntities = new DBObjectCollection();
                 blockRef.Explode(explodedEntities);
 
@@ -419,16 +410,16 @@ namespace AutoCAD_Layer_Manger.Services
                 {
                     if (explodedEntity is BlockReference nestedBlockRef)
                     {
-                        // »¼°j¤À¸Ñ´O®M¹Ï¶ô
+                        // éè¿´åˆ†è§£åµŒå¥—åœ–å¡Š
                         var nestedElements = ExplodeBlockToBasicElements(tr, nestedBlockRef, transform, depth + 1);
                         basicElements.AddRange(nestedElements);
                         
-                        // ÄÀ©ñ´O®M¹Ï¶ô°Ñ¦Ò
+                        // é‡‹æ”¾åµŒå¥—åœ–å¡Šåƒè€ƒ
                         nestedBlockRef.Dispose();
                     }
                     else
                     {
-                        // °òÂ¦´X¦ó¤¸¯À
+                        // åŸºç¤å¹¾ä½•å…ƒç´ 
                         try
                         {
                             if (!transform.IsEqualTo(Matrix3d.Identity))
@@ -439,8 +430,8 @@ namespace AutoCAD_Layer_Manger.Services
                         }
                         catch (System.Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"Âà´«¤¸¯À¥¢±Ñ: {ex.Message}");
-                            // §Y¨ÏÂà´«¥¢±Ñ¤]²K¥[¤¸¯À
+                            System.Diagnostics.Debug.WriteLine($"è½‰æ›å…ƒç´ å¤±æ•—: {ex.Message}");
+                            // å³ä½¿è½‰æ›å¤±æ•—ä¹Ÿæ·»åŠ å…ƒç´ 
                             basicElements.Add(explodedEntity);
                         }
                     }
@@ -448,14 +439,14 @@ namespace AutoCAD_Layer_Manger.Services
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"¤À¸Ñ¹Ï¶ô¥¢±Ñ: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"åˆ†è§£åœ–å¡Šå¤±æ•—: {ex.Message}");
             }
 
             return basicElements;
         }
 
         /// <summary>
-        /// ±N¹êÅé²K¥[¨ì¼Ò«¬ªÅ¶¡¡]§@¬°³Æ¥Î¤è®×¡^
+        /// å°‡å¯¦é«”æ·»åŠ åˆ°æ¨¡å‹ç©ºé–“ï¼ˆä½œç‚ºå‚™ç”¨æ–¹æ¡ˆï¼‰
         /// </summary>
         private void AddEntitiesToModelSpace(Transaction tr, List<Entity> entities)
         {
@@ -476,18 +467,18 @@ namespace AutoCAD_Layer_Manger.Services
                     }
                     catch (System.Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"²K¥[¹êÅé¨ì¼Ò«¬ªÅ¶¡¥¢±Ñ: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"æ·»åŠ å¯¦é«”åˆ°æ¨¡å‹ç©ºé–“å¤±æ•—: {ex.Message}");
                     }
                 }
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"AddEntitiesToModelSpace¥¢±Ñ: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"AddEntitiesToModelSpaceå¤±æ•—: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// ¶Ç²Î¹Ï¶ô³B²z¤èªk¡]¦V¤U­İ®e¡^
+        /// å‚³çµ±åœ–å¡Šè™•ç†æ–¹æ³•ï¼ˆå‘ä¸‹å…¼å®¹ï¼‰
         /// </summary>
         private ConversionResult ProcessBlockReference(
             Transaction tr, 
@@ -504,11 +495,11 @@ namespace AutoCAD_Layer_Manger.Services
                 var btr = tr.GetObject(blockRef.BlockTableRecord, OpenMode.ForRead) as BlockTableRecord;
                 if (btr == null) return result;
 
-                // ­pºâ²Õ¦XÅÜ´«¯x°}
+                // è¨ˆç®—çµ„åˆè®Šæ›çŸ©é™£
                 var blockTransform = blockRef.BlockTransform;
                 var combinedTransform = blockTransform.PreMultiplyBy(transform);
 
-                // »¼°j³B²z¹Ï¶ô¤ºªºª«¥ó
+                // éè¿´è™•ç†åœ–å¡Šå…§çš„ç‰©ä»¶
                 foreach (ObjectId objId in btr)
                 {
                     if (tr.GetObject(objId, OpenMode.ForRead) is Entity blockEntity)
@@ -523,7 +514,7 @@ namespace AutoCAD_Layer_Manger.Services
                     }
                 }
 
-                // Âà´«¹Ï¶ô°Ñ¦Ò¥»¨­¨ì¥Ø¼Ğ¹Ï¼h
+                // è½‰æ›åœ–å¡Šåƒè€ƒæœ¬èº«åˆ°ç›®æ¨™åœ–å±¤
                 if (TryConvertEntityLayerWithUnlock(tr, blockRef, targetLayer, options))
                 {
                     result.ConvertedCount++;
@@ -531,20 +522,20 @@ namespace AutoCAD_Layer_Manger.Services
                 else
                 {
                     result.SkippedCount++;
-                    result.Errors.Add($"µLªkÂà´«¹Ï¶ô {blockRef.Name} ¨ì¹Ï¼h {targetLayer}");
+                    result.Errors.Add($"ç„¡æ³•è½‰æ›åœ–å¡Š {blockRef.Name} åˆ°åœ–å±¤ {targetLayer}");
                 }
             }
             catch (System.Exception ex)
             {
                 result.ErrorCount++;
-                result.Errors.Add($"³B²z¹Ï¶ô°Ñ¦Ò®Éµo¥Í¿ù»~: {ex.Message}");
+                result.Errors.Add($"è™•ç†åœ–å¡Šåƒè€ƒæ™‚ç™¼ç”ŸéŒ¯èª¤: {ex.Message}");
             }
 
             return result;
         }
 
         /// <summary>
-        /// ¼W±jªº¹Ï¼hÂà´«¤èªk¡A¤ä´©±j¨î³B²zÂê©w¹Ï¼h¤Wªºª«¥ó
+        /// å¢å¼·çš„åœ–å±¤è½‰æ›æ–¹æ³•ï¼Œæ”¯æ´å¼·åˆ¶è™•ç†é–å®šåœ–å±¤ä¸Šçš„ç‰©ä»¶
         /// </summary>
         private bool TryConvertEntityLayerWithUnlock(Transaction tr, Entity entity, string targetLayer, ConversionOptions options)
         {
@@ -553,7 +544,7 @@ namespace AutoCAD_Layer_Manger.Services
                 bool wasLayerLocked = false;
                 LayerTableRecord? sourceLayerRecord = null;
 
-                // ÀË¬d¹êÅé¬O§_¥i¥H­×§ï
+                // æª¢æŸ¥å¯¦é«”æ˜¯å¦å¯ä»¥ä¿®æ”¹
                 if (entity.IsReadEnabled && !entity.IsWriteEnabled)
                 {
                     try
@@ -562,20 +553,20 @@ namespace AutoCAD_Layer_Manger.Services
                     }
                     catch (Autodesk.AutoCAD.Runtime.Exception ex) when (ex.ErrorStatus == ErrorStatus.OnLockedLayer)
                     {
-                        // ¹êÅé¦bÂê©w¹Ï¼h¤W¡A»İ­n¯S®í³B²z
+                        // å¯¦é«”åœ¨é–å®šåœ–å±¤ä¸Šï¼Œéœ€è¦ç‰¹æ®Šè™•ç†
                     }
                 }
 
-                // ÀË¬d·í«e¹Ï¼h¬O§_³QÂê©w
+                // æª¢æŸ¥ç•¶å‰åœ–å±¤æ˜¯å¦è¢«é–å®š
                 if (IsEntityOnLockedLayer(tr, entity, out sourceLayerRecord))
                 {
                     if (!options.ForceConvertLockedObjects)
                     {
-                        // ¦pªG¤£±j¨îÂà´«Âê©wª«¥ó¡A«h¸õ¹L
+                        // å¦‚æœä¸å¼·åˆ¶è½‰æ›é–å®šç‰©ä»¶ï¼Œå‰‡è·³é
                         return false;
                     }
 
-                    // ¼È®É¸ÑÂê·½¹Ï¼h¥H¤¹³\­×§ï
+                    // æš«æ™‚è§£é–æºåœ–å±¤ä»¥å…è¨±ä¿®æ”¹
                     if (sourceLayerRecord != null && sourceLayerRecord.IsLocked)
                     {
                         try
@@ -586,7 +577,7 @@ namespace AutoCAD_Layer_Manger.Services
                         }
                         catch (System.Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"µLªk¸ÑÂê¹Ï¼h {sourceLayerRecord.Name}: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"ç„¡æ³•è§£é–åœ–å±¤ {sourceLayerRecord.Name}: {ex.Message}");
                             return false;
                         }
                     }
@@ -594,20 +585,20 @@ namespace AutoCAD_Layer_Manger.Services
 
                 try
                 {
-                    // ½T«O¹êÅé¥i¼g
+                    // ç¢ºä¿å¯¦é«”å¯å¯«
                     if (!entity.IsWriteEnabled)
                     {
                         entity.UpgradeOpen();
                     }
                     
-                    // ÅÜ§ó¹Ï¼h
+                    // è®Šæ›´åœ–å±¤
                     string originalLayer = entity.Layer;
                     entity.Layer = targetLayer;
                     
-                    // ÅçÃÒÂà´«¬O§_¦¨¥\
+                    // é©—è­‰è½‰æ›æ˜¯å¦æˆåŠŸ
                     if (entity.Layer != targetLayer)
                     {
-                        System.Diagnostics.Debug.WriteLine($"¹Ï¼hÂà´«ÅçÃÒ¥¢±Ñ: ´Á±æ {targetLayer}, ¹ê»Ú {entity.Layer}");
+                        System.Diagnostics.Debug.WriteLine($"åœ–å±¤è½‰æ›é©—è­‰å¤±æ•—: æœŸæœ› {targetLayer}, å¯¦éš› {entity.Layer}");
                         return false;
                     }
                     
@@ -616,22 +607,22 @@ namespace AutoCAD_Layer_Manger.Services
                 }
                 catch (Autodesk.AutoCAD.Runtime.Exception ex) when (ex.ErrorStatus == ErrorStatus.OnLockedLayer)
                 {
-                    System.Diagnostics.Debug.WriteLine($"¹êÅé¤´¦bÂê©w¹Ï¼h¤W: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"å¯¦é«”ä»åœ¨é–å®šåœ–å±¤ä¸Š: {ex.Message}");
                     return false;
                 }
                 catch (Autodesk.AutoCAD.Runtime.Exception ex) when (ex.ErrorStatus == ErrorStatus.NotOpenForWrite)
                 {
-                    System.Diagnostics.Debug.WriteLine($"¹êÅé¥¼¶}±Ò¼g¤JÅv­­: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"å¯¦é«”æœªé–‹å•Ÿå¯«å…¥æ¬Šé™: {ex.Message}");
                     return false;
                 }
                 catch (Autodesk.AutoCAD.Runtime.Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"AutoCAD¿ù»~ {ex.ErrorStatus}: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"AutoCADéŒ¯èª¤ {ex.ErrorStatus}: {ex.Message}");
                     return false;
                 }
                 finally
                 {
-                    // «ì´_·½¹Ï¼hªºÂê©wª¬ºA
+                    // æ¢å¾©æºåœ–å±¤çš„é–å®šç‹€æ…‹
                     if (wasLayerLocked && sourceLayerRecord != null)
                     {
                         try
@@ -645,21 +636,21 @@ namespace AutoCAD_Layer_Manger.Services
                         }
                         catch (System.Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"«ì´_¹Ï¼hÂê©wª¬ºA¥¢±Ñ: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"æ¢å¾©åœ–å±¤é–å®šç‹€æ…‹å¤±æ•—: {ex.Message}");
                         }
                     }
                 }
             }
             catch (System.Exception ex)
             {
-                // °O¿ı¸Ô²Ó¿ù»~¦ı¤£©ß¥X²§±`
-                System.Diagnostics.Debug.WriteLine($"Âà´«¹êÅé¹Ï¼h®Éµo¥Í¿ù»~: {ex.Message}");
+                // è¨˜éŒ„è©³ç´°éŒ¯èª¤ä½†ä¸æ‹‹å‡ºç•°å¸¸
+                System.Diagnostics.Debug.WriteLine($"è½‰æ›å¯¦é«”åœ–å±¤æ™‚ç™¼ç”ŸéŒ¯èª¤: {ex.Message}");
                 return false;
             }
         }
 
         /// <summary>
-        /// ³B²z´X¦ó¹êÅéªºÂà´«¡]§ï¶iª©¡^
+        /// è™•ç†å¹¾ä½•å¯¦é«”çš„è½‰æ›ï¼ˆæ”¹é€²ç‰ˆï¼‰
         /// </summary>
         private ConversionResult ProcessGeometricEntity(
             Transaction tr, 
@@ -671,23 +662,23 @@ namespace AutoCAD_Layer_Manger.Services
 
             try
             {
-                // ÀË¬d¹êÅéÃş«¬¬O§_¤ä´©
+                // æª¢æŸ¥å¯¦é«”é¡å‹æ˜¯å¦æ”¯æ´
                 if (!IsGeometricEntity(entity))
                 {
                     result.SkippedCount = 1;
-                    result.Errors.Add($"¤£¤ä´©ªº¹êÅéÃş«¬: {entity.GetType().Name}");
+                    result.Errors.Add($"ä¸æ”¯æ´çš„å¯¦é«”é¡å‹: {entity.GetType().Name}");
                     return result;
                 }
 
-                // ÀË¬d¹êÅé¬O§_¤w³Q§R°£
+                // æª¢æŸ¥å¯¦é«”æ˜¯å¦å·²è¢«åˆªé™¤
                 if (entity.IsErased)
                 {
                     result.SkippedCount = 1;
-                    result.Errors.Add($"¹êÅé¤w³Q§R°£: {entity.GetType().Name}");
+                    result.Errors.Add($"å¯¦é«”å·²è¢«åˆªé™¤: {entity.GetType().Name}");
                     return result;
                 }
 
-                // ¹Á¸ÕÂà´«
+                // å˜—è©¦è½‰æ›
                 if (TryConvertEntityLayerWithUnlock(tr, entity, targetLayer, options))
                 {
                     result.ConvertedCount = 1;
@@ -696,23 +687,23 @@ namespace AutoCAD_Layer_Manger.Services
                 {
                     result.SkippedCount = 1;
                     
-                    // ´£¨Ñ§ó¸Ô²Óªº¿ù»~«H®§
+                    // æä¾›æ›´è©³ç´°çš„éŒ¯èª¤ä¿¡æ¯
                     string errorDetail = AnalyzeConversionFailure(tr, entity, options);
                     
-                    result.Errors.Add($"µLªkÂà´«¹êÅé {entity.GetType().Name}: {errorDetail}");
+                    result.Errors.Add($"ç„¡æ³•è½‰æ›å¯¦é«” {entity.GetType().Name}: {errorDetail}");
                 }
             }
             catch (System.Exception ex)
             {
                 result.ErrorCount++;
-                result.Errors.Add($"Âà´«´X¦ó¹êÅé®Éµo¥Í¿ù»~: {ex.Message}");
+                result.Errors.Add($"è½‰æ›å¹¾ä½•å¯¦é«”æ™‚ç™¼ç”ŸéŒ¯èª¤: {ex.Message}");
             }
 
             return result;
         }
 
         /// <summary>
-        /// ÀË¬d¹êÅé¬O§_¦bÂê©w¹Ï¼h¤W¡A¨Ãªğ¦^¹Ï¼h°O¿ı¡]¼W±jª©¡^
+        /// æª¢æŸ¥å¯¦é«”æ˜¯å¦åœ¨é–å®šåœ–å±¤ä¸Šï¼Œä¸¦è¿”å›åœ–å±¤è¨˜éŒ„ï¼ˆå¢å¼·ç‰ˆï¼‰
         /// </summary>
         private bool IsEntityOnLockedLayer(Transaction tr, Entity entity, out LayerTableRecord? layerRecord)
         {
@@ -723,7 +714,7 @@ namespace AutoCAD_Layer_Manger.Services
                 Document doc = AcadApp.DocumentManager.MdiActiveDocument;
                 if (doc == null) return false;
 
-                Database db = entity.Database;
+                Database db = doc.Database;
                 var layerTable = tr.GetObject(db.LayerTableId, OpenMode.ForRead) as LayerTable;
                 
                 if (layerTable?.Has(entity.Layer) == true)
@@ -736,13 +727,13 @@ namespace AutoCAD_Layer_Manger.Services
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ÀË¬d¹Ï¼hÂê©wª¬ºA¥¢±Ñ: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"æª¢æŸ¥åœ–å±¤é–å®šç‹€æ…‹å¤±æ•—: {ex.Message}");
                 return false;
             }
         }
 
         /// <summary>
-        /// ÀË¬d¹êÅé¬O§_¦bÂê©w¹Ï¼h¤W¡]Â²¤Æª©¥»¡^
+        /// æª¢æŸ¥å¯¦é«”æ˜¯å¦åœ¨é–å®šåœ–å±¤ä¸Šï¼ˆç°¡åŒ–ç‰ˆæœ¬ï¼‰
         /// </summary>
         private bool IsEntityOnLockedLayer(Transaction tr, Entity entity)
         {
@@ -750,7 +741,7 @@ namespace AutoCAD_Layer_Manger.Services
         }
 
         /// <summary>
-        /// ´£¨ú¹Ï¶ôÄİ©Ê
+        /// æå–åœ–å¡Šå±¬æ€§
         /// </summary>
         private List<AttributeInfo> ExtractAttributes(Transaction tr, BlockReference blockRef)
         {
@@ -775,14 +766,14 @@ namespace AutoCAD_Layer_Manger.Services
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"´£¨úÄİ©Ê¥¢±Ñ: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"æå–å±¬æ€§å¤±æ•—: {ex.Message}");
             }
 
             return attributes;
         }
 
         /// <summary>
-        /// ­«·s³Ğ«Ø¹Ï¶ô
+        /// é‡æ–°å‰µå»ºåœ–å¡Š
         /// </summary>
         private BlockReference? RecreateBlockFromEntities(Transaction tr, List<Entity> entities, BlockInfo blockInfo)
         {
@@ -793,31 +784,31 @@ namespace AutoCAD_Layer_Manger.Services
 
                 var db = doc.Database;
                 
-                // ³Ğ«Ø°ß¤@ªº¹Ï¶ô¦WºÙ¡]¦pªG»İ­n¡^
+                // å‰µå»ºå”¯ä¸€çš„åœ–å¡Šåç¨±ï¼ˆå¦‚æœéœ€è¦ï¼‰
                 string newBlockName = GetUniqueBlockName(tr, blockInfo.Name);
 
-                // ³Ğ«Ø·sªº¹Ï¶ô©w¸q
+                // å‰µå»ºæ–°çš„åœ–å¡Šå®šç¾©
                 using (var newBlockRecord = new BlockTableRecord())
                 {
                     newBlockRecord.Name = newBlockName;
                     newBlockRecord.Origin = Point3d.Origin;
 
-                    // Àò¨ú¹Ï¶ôªí
+                    // ç²å–åœ–å¡Šè¡¨
                     var blockTable = tr.GetObject(db.BlockTableId, OpenMode.ForWrite) as BlockTable;
                     if (blockTable == null) return null;
 
-                    // ²K¥[¹Ï¶ô©w¸q¨ì¹Ï¶ôªí
+                    // æ·»åŠ åœ–å¡Šå®šç¾©åˆ°åœ–å¡Šè¡¨
                     var blockId = blockTable.Add(newBlockRecord);
                     tr.AddNewlyCreatedDBObject(newBlockRecord, true);
 
-                    // ±N¹êÅé²K¥[¨ì¹Ï¶ô©w¸q
+                    // å°‡å¯¦é«”æ·»åŠ åˆ°åœ–å¡Šå®šç¾©
                     foreach (var entity in entities)
                     {
                         newBlockRecord.AppendEntity(entity);
                         tr.AddNewlyCreatedDBObject(entity, true);
                     }
 
-                    // ³Ğ«Ø¹Ï¶ô°Ñ¦Ò
+                    // å‰µå»ºåœ–å¡Šåƒè€ƒ
                     var newBlockRef = new BlockReference(blockInfo.Position, blockId)
                     {
                         Rotation = blockInfo.Rotation,
@@ -825,14 +816,14 @@ namespace AutoCAD_Layer_Manger.Services
                         Layer = blockInfo.Layer
                     };
 
-                    // ²K¥[¨ì¼Ò«¬ªÅ¶¡
+                    // æ·»åŠ åˆ°æ¨¡å‹ç©ºé–“
                     var modelSpace = tr.GetObject(db.CurrentSpaceId, OpenMode.ForWrite) as BlockTableRecord;
                     if (modelSpace != null)
                     {
                         modelSpace.AppendEntity(newBlockRef);
                         tr.AddNewlyCreatedDBObject(newBlockRef, true);
 
-                        // «ì´_Äİ©Ê
+                        // æ¢å¾©å±¬æ€§
                         RestoreAttributes(tr, newBlockRef, blockInfo.Attributes);
 
                         return newBlockRef;
@@ -841,14 +832,14 @@ namespace AutoCAD_Layer_Manger.Services
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"­«·s³Ğ«Ø¹Ï¶ô¥¢±Ñ: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"é‡æ–°å‰µå»ºåœ–å¡Šå¤±æ•—: {ex.Message}");
             }
 
             return null;
         }
 
         /// <summary>
-        /// Àò¨ú°ß¤@ªº¹Ï¶ô¦WºÙ
+        /// ç²å–å”¯ä¸€çš„åœ–å¡Šåç¨±
         /// </summary>
         private string GetUniqueBlockName(Transaction tr, string baseName)
         {
@@ -871,7 +862,7 @@ namespace AutoCAD_Layer_Manger.Services
         }
 
         /// <summary>
-        /// «ì´_¹Ï¶ôÄİ©Ê
+        /// æ¢å¾©åœ–å¡Šå±¬æ€§
         /// </summary>
         private void RestoreAttributes(Transaction tr, BlockReference blockRef, List<AttributeInfo> attributes)
         {
@@ -895,12 +886,12 @@ namespace AutoCAD_Layer_Manger.Services
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"«ì´_Äİ©Ê¥¢±Ñ: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"æ¢å¾©å±¬æ€§å¤±æ•—: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// ¸Ô²Óªº¿ù»~¤ÀªR¤èªk
+        /// è©³ç´°çš„éŒ¯èª¤åˆ†ææ–¹æ³•
         /// </summary>
         private string AnalyzeConversionFailure(Transaction tr, Entity entity, ConversionOptions options)
         {
@@ -908,240 +899,82 @@ namespace AutoCAD_Layer_Manger.Services
             {
                 var reasons = new List<string>();
 
-                // ÀË¬d¹êÅéª¬ºA
+                // æª¢æŸ¥å¯¦é«”ç‹€æ…‹
                 if (entity.IsErased)
                 {
-                    reasons.Add("¹êÅé¤w³Q§R°£");
+                    reasons.Add("å¯¦é«”å·²è¢«åˆªé™¤");
                 }
 
                 if (entity.IsReadEnabled && !entity.IsWriteEnabled)
                 {
-                    reasons.Add("¹êÅé¬°°ßÅªª¬ºA");
+                    reasons.Add("å¯¦é«”ç‚ºå”¯è®€ç‹€æ…‹");
                 }
 
-                // ÀË¬d¹Ï¼hª¬ºA
+                // æª¢æŸ¥åœ–å±¤ç‹€æ…‹
                 if (IsEntityOnLockedLayer(tr, entity, out var layerRecord))
                 {
                     if (!options.ForceConvertLockedObjects)
                     {
-                        reasons.Add("¦ì©óÂê©w¹Ï¼h¥B¥¼±Ò¥Î±j¨îÂà´«");
+                        reasons.Add("ä½æ–¼é–å®šåœ–å±¤ä¸”æœªå•Ÿç”¨å¼·åˆ¶è½‰æ›");
                     }
                     else
                     {
-                        reasons.Add("¦ì©óÂê©w¹Ï¼h¡A±j¨îÂà´«¥¢±Ñ");
+                        reasons.Add("ä½æ–¼é–å®šåœ–å±¤ï¼Œå¼·åˆ¶è½‰æ›å¤±æ•—");
                     }
                 }
 
-                // ÀË¬d¹êÅéÃş«¬
+                // æª¢æŸ¥å¯¦é«”é¡å‹
                 if (!IsGeometricEntity(entity) && !(entity is BlockReference))
                 {
-                    reasons.Add($"¤£¤ä´©ªº¹êÅéÃş«¬: {entity.GetType().Name}");
+                    reasons.Add($"ä¸æ”¯æ´çš„å¯¦é«”é¡å‹: {entity.GetType().Name}");
                 }
 
-                // ¯S®í¹êÅéÀË¬d
+                // ç‰¹æ®Šå¯¦é«”æª¢æŸ¥
                 if (entity is BlockReference blockRef)
                 {
                     var btr = tr.GetObject(blockRef.BlockTableRecord, OpenMode.ForRead) as BlockTableRecord;
                     if (btr?.Explodable == false)
                     {
-                        reasons.Add("¹Ï¶ô¤£¥i¤À¸Ñ");
+                        reasons.Add("åœ–å¡Šä¸å¯åˆ†è§£");
                     }
                 }
 
-                return reasons.Count > 0 ? string.Join(", ", reasons) : "¥¼ª¾­ì¦]";
+                return reasons.Count > 0 ? string.Join(", ", reasons) : "æœªçŸ¥åŸå› ";
             }
             catch (System.Exception ex)
             {
-                return $"¤ÀªR¥¢±Ñ: {ex.Message}";
+                return $"åˆ†æå¤±æ•—: {ex.Message}";
             }
         }
 
-        /// <summary>
-        /// ÀË¬d¹êÅé¬O§_¬°´X¦ó¹êÅé
-        /// </summary>
         public bool IsGeometricEntity(Entity entity)
         {
-            return entity is Curve ||
-                   entity is Autodesk.AutoCAD.DatabaseServices.Region ||
-                   entity is Body ||
-                   entity is Face ||
-                   entity is Autodesk.AutoCAD.DatabaseServices.Surface ||
-                   entity is Solid3d ||
-                   entity is Hatch ||
-                   entity is MText ||
-                   entity is DBText ||
-                   entity is Dimension ||  // ·s¼W¡G¤Ø¤o¼Ğµù
-                   entity is Leader ||     // ·s¼W¡G¤Ş½u
-                   entity is MLeader ||    // ·s¼W¡G¦h­«¤Ş½u
-                   entity is Table ||      // ·s¼W¡Gªí®æ
-                   entity is Polyline ||
-                   entity is Polyline2d ||
-                   entity is Polyline3d ||
-                   entity is Line ||
-                   entity is Arc ||
-                   entity is Circle ||
-                   entity is Ellipse ||
-                   entity is DBPoint ||    // ­×¥¿¡G¨Ï¥ÎDBPoint¦Ó¤£¬OPoint
-                   entity is Spline ||
-                   entity is Ray ||
-                   entity is Xline ||
-                   entity is Shape;
+            if (entity == null) return false;
+
+            // æ“´å±•æ”¯æ´çš„å¯¦é«”é¡å‹
+            var extendedTypes = new HashSet<Type>(GeometricEntityTypes)
+            {
+                typeof(Viewport), typeof(Table), typeof(MText),
+                typeof(Shape), typeof(Tolerance)
+            };
+
+            return extendedTypes.Contains(entity.GetType());
         }
 
         /// <summary>
-        /// ³Ğ«Ø¥¼¹ê²{¤èªkªºµ²ªG
+        /// å‰µå»ºæœªå¯¦ç¾æ–¹æ³•çš„çµæœ
         /// </summary>
         private ConversionResult CreateNotImplementedResult(string methodName)
         {
             var result = new ConversionResult();
             result.ErrorCount++;
-            result.Errors.Add($"{methodName}¡A«ØÄ³¨Ï¥Î¤À¸Ñ­«²Õªk©Î¶Ç²Î¤èªk");
+            result.Errors.Add($"{methodName}ï¼Œå»ºè­°ä½¿ç”¨åˆ†è§£é‡çµ„æ³•æˆ–å‚³çµ±æ–¹æ³•");
             return result;
-        }
-
-        /// <summary>
-        /// ÀË¬d¬O§_¬°¼Ğµù©Î°ÊºA¹Ï¶ô
-        /// </summary>
-        private bool IsAnnotationOrDynamicBlock(Entity entity)
-        {
-            return entity is Dimension ||
-                   entity is Leader ||
-                   entity is MLeader ||
-                   (entity is BlockReference blockRef && IsDynamicBlock(blockRef));
-        }
-
-        /// <summary>
-        /// ÀË¬d¹Ï¶ô¬O§_¬°°ÊºA¹Ï¶ô
-        /// </summary>
-        private bool IsDynamicBlock(BlockReference blockRef)
-        {
-            try
-            {
-                return blockRef.IsDynamicBlock || 
-                       blockRef.DynamicBlockTableRecord != ObjectId.Null;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// ³B²zÂê©w¹Ï¼h¤Wªº¼Ğµù©Î°ÊºA¹Ï¶ô
-        /// </summary>
-        private ConversionResult ProcessAnnotationOnLockedLayer(
-            Transaction tr, 
-            Entity entity, 
-            string targetLayer, 
-            ConversionOptions options)
-        {
-            var result = new ConversionResult();
-
-            try
-            {
-                // Àò¨ú¹êÅé©Ò¦bªº¹Ï¼h
-                string sourceLayerName = entity.Layer;
-                
-                // ¼È®É¸ÑÂê·½¹Ï¼h
-                var layerTable = tr.GetObject(entity.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
-                if (layerTable != null && layerTable.Has(sourceLayerName))
-                {
-                    var sourceLayerRecord = tr.GetObject(layerTable[sourceLayerName], OpenMode.ForRead) as LayerTableRecord;
-                    bool wasLocked = false;
-                    
-                    if (sourceLayerRecord != null && sourceLayerRecord.IsLocked)
-                    {
-                        wasLocked = true;
-                        sourceLayerRecord.UpgradeOpen();
-                        sourceLayerRecord.IsLocked = false;
-                        sourceLayerRecord.DowngradeOpen();
-                    }
-
-                    try
-                    {
-                        // Âà´«¹êÅé¹Ï¼h
-                        if (TryConvertEntityLayer(tr, entity, targetLayer, options))
-                        {
-                            result.ConvertedCount++;
-                            result.Errors.Add($"¤w³B²zÂê©w¹Ï¼h¤Wªº{GetEntityTypeName(entity)}: {entity.GetType().Name}");
-                        }
-                        else
-                        {
-                            result.ErrorCount++;
-                            result.Errors.Add($"µLªkÂà´«Âê©w¹Ï¼h¤Wªº{GetEntityTypeName(entity)}");
-                        }
-                    }
-                    finally
-                    {
-                        // «ì´_¹Ï¼hÂê©wª¬ºA
-                        if (wasLocked && options.RestoreLayerLockState)
-                        {
-                            if (sourceLayerRecord.IsWriteEnabled)
-                            {
-                                sourceLayerRecord.IsLocked = true;
-                            }
-                            else
-                            {
-                                sourceLayerRecord.UpgradeOpen();
-                                sourceLayerRecord.IsLocked = true;
-                                sourceLayerRecord.DowngradeOpen();
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    result.ErrorCount++;
-                    result.Errors.Add($"§ä¤£¨ì·½¹Ï¼h: {sourceLayerName}");
-                }
-            }
-            catch (System.Exception ex)
-            {
-                result.ErrorCount++;
-                result.Errors.Add($"³B²zÂê©w¹Ï¼h¤Wªº¼Ğµù¥¢±Ñ: {ex.Message}");
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Àò¨ú¹êÅéÃş«¬ªº¤Íµ½¦WºÙ
-        /// </summary>
-        private string GetEntityTypeName(Entity entity)
-        {
-            return entity switch
-            {
-                Dimension => "¤Ø¤o¼Ğµù",
-                Leader => "¤Ş½u",
-                MLeader => "¦h­«¤Ş½u",
-                BlockReference blockRef when IsDynamicBlock(blockRef) => "°ÊºA¹Ï¶ô",
-                BlockReference => "¹Ï¶ô",
-                _ => "ª«¥ó"
-            };
-        }
-
-        /// <summary>
-        /// ¹Á¸ÕÂà´«¹êÅé¹Ï¼h¡]°ò¥»¤èªk¡^
-        /// </summary>
-        private bool TryConvertEntityLayer(Transaction tr, Entity entity, string targetLayer, ConversionOptions options)
-        {
-            try
-            {
-                entity.UpgradeOpen();
-                entity.Layer = targetLayer;
-                entity.DowngradeOpen();
-                return true;
-            }
-            catch (System.Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Âà´«¹êÅé¹Ï¼h¥¢±Ñ: {ex.Message}");
-                return false;
-            }
         }
     }
 
     /// <summary>
-    /// ¹Ï¶ô¸ê°TÃş§O
+    /// åœ–å¡Šè³‡è¨Šé¡åˆ¥
     /// </summary>
     public class BlockInfo
     {
@@ -1154,7 +987,7 @@ namespace AutoCAD_Layer_Manger.Services
     }
 
     /// <summary>
-    /// Äİ©Ê¸ê°TÃş§O
+    /// å±¬æ€§è³‡è¨Šé¡åˆ¥
     /// </summary>
     public class AttributeInfo
     {

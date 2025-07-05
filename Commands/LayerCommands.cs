@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using AutoCAD_Layer_Manger.UI;
+using AutoCAD_Layer_Manger.Services;
 using AcadApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 [assembly: CommandClass(typeof(AutoCAD_Layer_Manger.Commands.LayerCommands))]
@@ -837,9 +838,9 @@ namespace AutoCAD_Layer_Manger.Commands
         /// <summary>
         /// 轉換實體到圖層
         /// </summary>
-        private LayerManagerForm.ConversionResult ConvertEntities(ObjectId[] entityIds, string targetLayer)
+        private ConversionResult ConvertEntities(ObjectId[] entityIds, string targetLayer)
         {
-            var result = new LayerManagerForm.ConversionResult();
+            var result = new ConversionResult();
             
             try
             {
@@ -909,7 +910,7 @@ namespace AutoCAD_Layer_Manger.Commands
         /// <summary>
         /// 顯示轉換結果
         /// </summary>
-        private void ShowResult(Editor ed, LayerManagerForm.ConversionResult result)
+        private void ShowResult(Editor ed, ConversionResult result)
         {
             ed.WriteMessage($"\n=== 轉換結果 ===");
             ed.WriteMessage($"\n成功轉換: {result.ConvertedCount} 個物件");
@@ -931,6 +932,76 @@ namespace AutoCAD_Layer_Manger.Commands
             ed.WriteMessage("\n轉換完成！");
         }
 
+        /// <summary>
+        /// 檢查實體是否在鎖定圖層上
+        /// </summary>
+        private bool IsEntityOnLockedLayer(Transaction tr, Entity entity)
+        {
+            try
+            {
+                var db = entity.Database;
+                var layerTable = tr.GetObject(db.LayerTableId, OpenMode.ForRead) as LayerTable;
+                
+                if (layerTable?.Has(entity.Layer) == true)
+                {
+                    var layerRecord = tr.GetObject(layerTable[entity.Layer], OpenMode.ForRead) as LayerTableRecord;
+                    return layerRecord?.IsLocked == true;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"IsEntityOnLockedLayer error: {ex}");
+            }
+            
+            return false;
+        }
+
+        /// <summary>
+        /// 使用解鎖方法轉換實體
+        /// </summary>
+        private bool ConvertEntityWithUnlock(Transaction tr, Entity entity, string targetLayer)
+        {
+            try
+            {
+                var db = entity.Database;
+                var layerTable = tr.GetObject(db.LayerTableId, OpenMode.ForRead) as LayerTable;
+                
+                if (layerTable?.Has(entity.Layer) == true)
+                {
+                    var layerRecord = tr.GetObject(layerTable[entity.Layer], OpenMode.ForRead) as LayerTableRecord;
+                    
+                    if (layerRecord?.IsLocked == true)
+                    {
+                        // 暫時解鎖
+                        layerRecord.UpgradeOpen();
+                        layerRecord.IsLocked = false;
+                        
+                        // 轉換圖層
+                        entity.UpgradeOpen();
+                        entity.Layer = targetLayer;
+                        
+                        // 恢復鎖定
+                        layerRecord.IsLocked = true;
+                        
+                        return true;
+                    }
+                    else
+                    {
+                        // 圖層未鎖定，直接轉換
+                        entity.UpgradeOpen();
+                        entity.Layer = targetLayer;
+                        return true;
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ConvertEntityWithUnlock error: {ex}");
+            }
+            
+            return false;
+        }
+
         #region 數據類別
 
         /// <summary>
@@ -944,6 +1015,8 @@ namespace AutoCAD_Layer_Manger.Commands
             public bool IsOff { get; set; }
             public bool IsAvailable => !IsLocked && !IsFrozen && !IsOff;
         }
+
+        #endregion
 
         #endregion
     }

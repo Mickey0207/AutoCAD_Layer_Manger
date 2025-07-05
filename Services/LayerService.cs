@@ -301,26 +301,31 @@ namespace AutoCAD_Layer_Manger.Services
     }
 
     /// <summary>
-    /// 轉換選項 - 智能增強版本
+    /// 轉換選項 - 物件類型過濾版本
     /// </summary>
     public class ConversionOptions
     {
         public bool CreateTargetLayer { get; set; } = true;
-        public bool SkipLockedObjects { get; set; } = false;
         public bool UnlockTargetLayer { get; set; } = true;
-        public bool ProcessBlocks { get; set; } = true;
         public bool ForceConvertLockedObjects { get; set; } = true;
-        public bool RestoreLayerLockState { get; set; } = true;
+        public bool ProcessAllEntities { get; set; } = true;
+        
+        // 物件類型過濾選項
+        public bool ProcessPolylines { get; set; } = true;
+        public bool ProcessLines { get; set; } = true;
+        public bool ProcessCircles { get; set; } = true;
+        public bool ProcessArcs { get; set; } = true;
+        public bool ProcessBlocks { get; set; } = true;
+        public bool ProcessDynamicBlocks { get; set; } = true;
+        public bool ProcessDimensions { get; set; } = true;
+        
+        // 圖塊處理選項（保留現有功能）
         public bool UseBlockExplodeMethod { get; set; } = true;
-        public bool UseBlockEditorMethod { get; set; } = false;
         public bool UseReferenceEditMethod { get; set; } = false;
-        public bool EnableAutoRetry { get; set; } = true; // 新增：啟用智能自動重試
-        public bool ProcessAnnotationsOnLockedLayers { get; set; } = true; // 新增：處理鎖定圖層的標註和動態圖塊
+        public bool UseBlockEditorMethod { get; set; } = false;
+        public bool EnableAutoRetry { get; set; } = true;
         public int MaxDepth { get; set; } = 50;
         
-        /// <summary>
-        /// 圖塊處理優先順序
-        /// </summary>
         public BlockProcessingMethod PreferredBlockMethod { get; set; } = BlockProcessingMethod.ExplodeRecombine;
         
         /// <summary>
@@ -344,6 +349,15 @@ namespace AutoCAD_Layer_Manger.Services
                 methods.Add(BlockProcessingMethod.BlockEditor);
             
             return methods;
+        }
+        
+        /// <summary>
+        /// 檢查是否有任何物件類型被啟用
+        /// </summary>
+        public bool HasAnyEntityTypeEnabled()
+        {
+            return ProcessPolylines || ProcessLines || ProcessCircles || ProcessArcs ||
+                   ProcessBlocks || ProcessDynamicBlocks || ProcessDimensions;
         }
     }
 
