@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+<<<<<<< HEAD
             infoLabel = new Label();
             layerGroupBox = new GroupBox();
             previewButton = new Button();
@@ -49,6 +50,22 @@
             settingsGroupBox.SuspendLayout();
             methodsGroupBox.SuspendLayout();
             SuspendLayout();
+=======
+            this.infoLabel = new System.Windows.Forms.Label();
+            this.layerGroupBox = new System.Windows.Forms.GroupBox();
+            this.previewButton = new System.Windows.Forms.Button();
+            this.layerComboBox = new System.Windows.Forms.ComboBox();
+            this.settingsGroupBox = new System.Windows.Forms.GroupBox();
+            this.handleLockedObjectsCheckBox = new System.Windows.Forms.CheckBox();
+            this.createLayerCheckBox = new System.Windows.Forms.CheckBox();
+            this.unlockTargetLayerCheckBox = new System.Windows.Forms.CheckBox();
+            this.statusLabel = new System.Windows.Forms.Label();
+            this.convertButton = new System.Windows.Forms.Button();
+            this.cancelButton = new System.Windows.Forms.Button();
+            this.layerGroupBox.SuspendLayout();
+            this.settingsGroupBox.SuspendLayout();
+            this.SuspendLayout();
+>>>>>>> 0ed8e2a0214d8423838f43395ca0b7017c986a80
             // 
             // infoLabel
             // 
@@ -98,6 +115,7 @@
             // 
             // settingsGroupBox
             // 
+<<<<<<< HEAD
             settingsGroupBox.Controls.Add(handleLockedObjectsCheckBox);
             settingsGroupBox.Controls.Add(createLayerCheckBox);
             settingsGroupBox.Controls.Add(unlockTargetLayerCheckBox);
@@ -123,6 +141,29 @@
             handleLockedObjectsCheckBox.TabIndex = 2;
             handleLockedObjectsCheckBox.Text = "強制轉換鎖定圖層上的物件(包括圖塊)";
             handleLockedObjectsCheckBox.UseVisualStyleBackColor = true;
+=======
+            this.settingsGroupBox.Controls.Add(this.handleLockedObjectsCheckBox);
+            this.settingsGroupBox.Controls.Add(this.createLayerCheckBox);
+            this.settingsGroupBox.Controls.Add(this.unlockTargetLayerCheckBox);
+            this.settingsGroupBox.Location = new System.Drawing.Point(12, 150);
+            this.settingsGroupBox.Name = "settingsGroupBox";
+            this.settingsGroupBox.Size = new System.Drawing.Size(480, 150);
+            this.settingsGroupBox.TabIndex = 2;
+            this.settingsGroupBox.TabStop = false;
+            this.settingsGroupBox.Text = "�ഫ�]�w";
+            // 
+            // handleLockedObjectsCheckBox
+            // 
+            this.handleLockedObjectsCheckBox.AutoSize = true;
+            this.handleLockedObjectsCheckBox.Checked = true;
+            this.handleLockedObjectsCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.handleLockedObjectsCheckBox.Location = new System.Drawing.Point(15, 90);
+            this.handleLockedObjectsCheckBox.Name = "handleLockedObjectsCheckBox";
+            this.handleLockedObjectsCheckBox.Size = new System.Drawing.Size(147, 16);
+            this.handleLockedObjectsCheckBox.TabIndex = 2;
+            this.handleLockedObjectsCheckBox.Text = "�B�z��w�ϼh�W������";
+            this.handleLockedObjectsCheckBox.UseVisualStyleBackColor = true;
+>>>>>>> 0ed8e2a0214d8423838f43395ca0b7017c986a80
             // 
             // createLayerCheckBox
             // 
@@ -234,6 +275,7 @@
             // 
             // statusLabel
             // 
+<<<<<<< HEAD
             statusLabel.AutoSize = true;
             statusLabel.ForeColor = Color.Gray;
             statusLabel.Location = new Point(22, 892);
@@ -288,6 +330,62 @@
             Name = "LayerManagerForm";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "AutoCAD 圖層管理器 - 智能多方法轉換";
+=======
+            this.statusLabel.AutoSize = true;
+            this.statusLabel.ForeColor = System.Drawing.Color.Gray;
+            this.statusLabel.Location = new System.Drawing.Point(12, 320);
+            this.statusLabel.Name = "statusLabel";
+            this.statusLabel.Size = new System.Drawing.Size(53, 12);
+            this.statusLabel.TabIndex = 3;
+            this.statusLabel.Text = "�ǳƴN��";
+            // 
+            // convertButton
+            // 
+            this.convertButton.BackColor = System.Drawing.Color.LightGreen;
+            this.convertButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(136)));
+            this.convertButton.Location = new System.Drawing.Point(330, 360);
+            this.convertButton.Name = "convertButton";
+            this.convertButton.Size = new System.Drawing.Size(80, 35);
+            this.convertButton.TabIndex = 4;
+            this.convertButton.Text = "�}�l�ഫ";
+            this.convertButton.UseVisualStyleBackColor = false;
+            this.convertButton.Click += new System.EventHandler(this.convertButton_Click);
+            // 
+            // cancelButton
+            // 
+            this.cancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
+            this.cancelButton.Location = new System.Drawing.Point(420, 360);
+            this.cancelButton.Name = "cancelButton";
+            this.cancelButton.Size = new System.Drawing.Size(75, 35);
+            this.cancelButton.TabIndex = 5;
+            this.cancelButton.Text = "����";
+            this.cancelButton.UseVisualStyleBackColor = true;
+            // 
+            // LayerManagerForm
+            // 
+            this.AcceptButton = this.convertButton;
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.CancelButton = this.cancelButton;
+            this.ClientSize = new System.Drawing.Size(520, 420);
+            this.Controls.Add(this.cancelButton);
+            this.Controls.Add(this.convertButton);
+            this.Controls.Add(this.statusLabel);
+            this.Controls.Add(this.settingsGroupBox);
+            this.Controls.Add(this.layerGroupBox);
+            this.Controls.Add(this.infoLabel);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.MinimizeBox = false;
+            this.Name = "LayerManagerForm";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.Text = "AutoCAD �ϼh�޲z��";
+            this.layerGroupBox.ResumeLayout(false);
+            this.settingsGroupBox.ResumeLayout(false);
+            this.settingsGroupBox.PerformLayout();
+            this.ResumeLayout(false);
+            this.PerformLayout();
+>>>>>>> 0ed8e2a0214d8423838f43395ca0b7017c986a80
 
         }
 
@@ -301,12 +399,15 @@
         private System.Windows.Forms.CheckBox handleLockedObjectsCheckBox;
         private System.Windows.Forms.CheckBox createLayerCheckBox;
         private System.Windows.Forms.CheckBox unlockTargetLayerCheckBox;
+<<<<<<< HEAD
         private System.Windows.Forms.CheckBox processAnnotationsCheckBox;
         private System.Windows.Forms.GroupBox methodsGroupBox;
         private System.Windows.Forms.CheckBox blockExplodeMethodCheckBox;
         private System.Windows.Forms.CheckBox referenceEditMethodCheckBox;
         private System.Windows.Forms.CheckBox blockEditorMethodCheckBox;
         private System.Windows.Forms.CheckBox autoSelectMethodCheckBox;
+=======
+>>>>>>> 0ed8e2a0214d8423838f43395ca0b7017c986a80
         private System.Windows.Forms.Label statusLabel;
         private System.Windows.Forms.Button convertButton;
         private System.Windows.Forms.Button cancelButton;
