@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using AutoCAD_Layer_Manger.UI;
-using AutoCAD_Layer_Manger.Services;
 using AcadApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 [assembly: CommandClass(typeof(AutoCAD_Layer_Manger.Commands.LayerCommands))]
@@ -16,7 +15,7 @@ using AcadApp = Autodesk.AutoCAD.ApplicationServices.Application;
 namespace AutoCAD_Layer_Manger.Commands
 {
     /// <summary>
-    /// 圖層管理命令類別
+    /// 簡化的圖層管理指令 - 使用統一UI
     /// </summary>
     public class LayerCommands
     {
@@ -116,7 +115,7 @@ namespace AutoCAD_Layer_Manger.Commands
         }
 
         /// <summary>
-        /// 快速轉換指令 - 轉換到當前圖層，支援鎖定圖層
+        /// 快速轉換指令 - 轉換到當前圖層
         /// </summary>
         [CommandMethod("LAYERQUICK", CommandFlags.Modal)]
         public void LayerQuickCommand()
@@ -137,15 +136,6 @@ namespace AutoCAD_Layer_Manger.Commands
                 var entityIds = SelectEntities(ed);
                 if (entityIds.Length == 0) return;
 
-                // 詢問是否強制轉換鎖定物件
-                var forceOpts = new PromptKeywordOptions($"\n是否強制轉換鎖定圖層上的物件(包括圖塊)? ");
-                forceOpts.Keywords.Add("Yes");
-                forceOpts.Keywords.Add("No");
-                forceOpts.Keywords.Default = "Yes";
-
-                var forceResult = ed.GetKeywords(forceOpts);
-                bool forceConvert = forceResult.Status == PromptStatus.OK && forceResult.StringResult == "Yes";
-
                 // 確認轉換
                 var confirmOpts = new PromptKeywordOptions($"\n將 {entityIds.Length} 個物件轉換到圖層 '{currentLayer}'? ");
                 confirmOpts.Keywords.Add("Yes");
@@ -155,7 +145,7 @@ namespace AutoCAD_Layer_Manger.Commands
                 var confirmResult = ed.GetKeywords(confirmOpts);
                 if (confirmResult.Status == PromptStatus.OK && confirmResult.StringResult == "Yes")
                 {
-                    var result = ConvertEntitiesWithOptions(entityIds, currentLayer, forceConvert);
+                    var result = ConvertEntities(entityIds, currentLayer);
                     ShowResult(ed, result);
                 }
                 else
@@ -718,97 +708,6 @@ namespace AutoCAD_Layer_Manger.Commands
         }
 
         /// <summary>
-        /// 強制轉換實體，包括鎖定圖層上的物件
-        /// </summary>
-        private bool ConvertEntityWithUnlock(Transaction tr, Entity entity, string targetLayer)
-        {
-            try
-            {
-                bool wasLayerLocked = false;
-                LayerTableRecord? sourceLayerRecord = null;
-
-                // 檢查當前圖層是否被鎖定
-                if (IsEntityOnLockedLayer(tr, entity, out sourceLayerRecord))
-                {
-                    // 暫時解鎖源圖層以允許修改
-                    if (sourceLayerRecord != null && sourceLayerRecord.IsLocked)
-                    {
-                        sourceLayerRecord.UpgradeOpen();
-                        sourceLayerRecord.IsLocked = false;
-                        wasLayerLocked = true;
-                    }
-                }
-
-                try
-                {
-                    // 升級為寫入模式並變更圖層
-                    entity.UpgradeOpen();
-                    entity.Layer = targetLayer;
-                    return true;
-                }
-                finally
-                {
-                    // 恢復源圖層的鎖定狀態
-                    if (wasLayerLocked && sourceLayerRecord != null)
-                    {
-                        if (!sourceLayerRecord.IsWriteEnabled)
-                        {
-                            sourceLayerRecord.UpgradeOpen();
-                        }
-                        sourceLayerRecord.IsLocked = true;
-                    }
-                }
-            }
-            catch (Autodesk.AutoCAD.Runtime.Exception ex) when (ex.ErrorStatus == Autodesk.AutoCAD.Runtime.ErrorStatus.OnLockedLayer)
-            {
-                // 即使暫時解鎖也無法修改
-                System.Diagnostics.Debug.WriteLine($"無法轉換鎖定圖層上的實體: {ex.Message}");
-                return false;
-            }
-            catch (System.Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"轉換實體圖層時發生錯誤: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 檢查實體是否在鎖定圖層上，並返回圖層記錄
-        /// </summary>
-        private bool IsEntityOnLockedLayer(Transaction tr, Entity entity, out LayerTableRecord? layerRecord)
-        {
-            layerRecord = null;
-            
-            try
-            {
-                var doc = AcadApp.DocumentManager.MdiActiveDocument;
-                if (doc?.Database == null) return false;
-
-                var layerTable = tr.GetObject(doc.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
-                
-                if (layerTable?.Has(entity.Layer) == true)
-                {
-                    layerRecord = tr.GetObject(layerTable[entity.Layer], OpenMode.ForRead) as LayerTableRecord;
-                    return layerRecord?.IsLocked == true;
-                }
-
-                return false;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 檢查實體是否在鎖定圖層上（簡化版本）
-        /// </summary>
-        private bool IsEntityOnLockedLayer(Transaction tr, Entity entity)
-        {
-            return IsEntityOnLockedLayer(tr, entity, out _);
-        }
-
-        /// <summary>
         /// 選取實體
         /// </summary>
         private ObjectId[] SelectEntities(Editor ed)
@@ -936,6 +835,53 @@ namespace AutoCAD_Layer_Manger.Commands
         }
 
         /// <summary>
+        /// 轉換實體到圖層
+        /// </summary>
+        private LayerManagerForm.ConversionResult ConvertEntities(ObjectId[] entityIds, string targetLayer)
+        {
+            var result = new LayerManagerForm.ConversionResult();
+            
+            try
+            {
+                var doc = AcadApp.DocumentManager.MdiActiveDocument;
+                if (doc?.Database == null) return result;
+
+                using (var tr = doc.Database.TransactionManager.StartTransaction())
+                {
+                    // 確保目標圖層存在
+                    EnsureLayerExists(tr, doc.Database, targetLayer);
+
+                    foreach (var objId in entityIds)
+                    {
+                        try
+                        {
+                            if (tr.GetObject(objId, OpenMode.ForWrite) is Entity entity)
+                            {
+                                entity.Layer = targetLayer;
+                                result.ConvertedCount++;
+                            }
+                        }
+                        catch (System.Exception ex)
+                        {
+                            result.ErrorCount++;
+                            result.Errors.Add($"物件 {objId}: {ex.Message}");
+                        }
+                    }
+
+                    tr.Commit();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                result.ErrorCount++;
+                result.Errors.Add($"轉換失敗: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ConvertEntities error: {ex}");
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// 確保圖層存在
         /// </summary>
         private void EnsureLayerExists(Transaction tr, Database db, string layerName)
@@ -963,11 +909,10 @@ namespace AutoCAD_Layer_Manger.Commands
         /// <summary>
         /// 顯示轉換結果
         /// </summary>
-        private void ShowResult(Editor ed, ConversionResult result)
+        private void ShowResult(Editor ed, LayerManagerForm.ConversionResult result)
         {
             ed.WriteMessage($"\n=== 轉換結果 ===");
             ed.WriteMessage($"\n成功轉換: {result.ConvertedCount} 個物件");
-            ed.WriteMessage($"\n跳過物件: {result.SkippedCount} 個");
             ed.WriteMessage($"\n錯誤物件: {result.ErrorCount} 個");
             
             if (result.Errors.Any())
@@ -985,8 +930,6 @@ namespace AutoCAD_Layer_Manger.Commands
             
             ed.WriteMessage("\n轉換完成！");
         }
-
-        #endregion
 
         #region 數據類別
 
