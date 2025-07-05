@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using AutoCAD_Layer_Manger.UI;
+using AutoCAD_Layer_Manger.Services;
 using AcadApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 [assembly: CommandClass(typeof(AutoCAD_Layer_Manger.Commands.LayerCommands))]
@@ -15,7 +16,7 @@ using AcadApp = Autodesk.AutoCAD.ApplicationServices.Application;
 namespace AutoCAD_Layer_Manger.Commands
 {
     /// <summary>
-    /// 簡化的圖層管理指令 - 使用統一UI
+    /// 圖層管理命令類別
     /// </summary>
     public class LayerCommands
     {
@@ -115,7 +116,7 @@ namespace AutoCAD_Layer_Manger.Commands
         }
 
         /// <summary>
-        /// 快速轉換指令 - 轉換到當前圖層
+        /// 快速轉換指令 - 轉換到當前圖層，支援鎖定圖層
         /// </summary>
         [CommandMethod("LAYERQUICK", CommandFlags.Modal)]
         public void LayerQuickCommand()
@@ -136,6 +137,15 @@ namespace AutoCAD_Layer_Manger.Commands
                 var entityIds = SelectEntities(ed);
                 if (entityIds.Length == 0) return;
 
+                // 詢問是否強制轉換鎖定物件
+                var forceOpts = new PromptKeywordOptions($"\n是否強制轉換鎖定圖層上的物件(包括圖塊)? ");
+                forceOpts.Keywords.Add("Yes");
+                forceOpts.Keywords.Add("No");
+                forceOpts.Keywords.Default = "Yes";
+
+                var forceResult = ed.GetKeywords(forceOpts);
+                bool forceConvert = forceResult.Status == PromptStatus.OK && forceResult.StringResult == "Yes";
+
                 // 確認轉換
                 var confirmOpts = new PromptKeywordOptions($"\n將 {entityIds.Length} 個物件轉換到圖層 '{currentLayer}'? ");
                 confirmOpts.Keywords.Add("Yes");
@@ -145,7 +155,7 @@ namespace AutoCAD_Layer_Manger.Commands
                 var confirmResult = ed.GetKeywords(confirmOpts);
                 if (confirmResult.Status == PromptStatus.OK && confirmResult.StringResult == "Yes")
                 {
-                    var result = ConvertEntities(entityIds, currentLayer);
+                    var result = ConvertEntitiesWithOptions(entityIds, currentLayer, forceConvert);
                     ShowResult(ed, result);
                 }
                 else
@@ -158,6 +168,364 @@ namespace AutoCAD_Layer_Manger.Commands
                 ed.WriteMessage($"\n快速轉換錯誤: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"LayerQuickCommand error: {ex}");
             }
+        }
+
+        /// <summary>
+        /// 測試圖塊分解重組功能指令
+        /// </summary>
+        [CommandMethod("LAYERBLOCKTEST", CommandFlags.Modal)]
+        public void LayerBlockTestCommand()
+        {
+            var doc = AcadApp.DocumentManager.MdiActiveDocument;
+            var ed = doc?.Editor;
+            if (ed == null) return;
+
+            try
+            {
+                ed.WriteMessage("\n=== 圖塊分解重組功能測試 ===");
+                
+                // 選取圖塊
+                var opts = new PromptSelectionOptions
+                {
+                    MessageForAdding = "\n選取要測試的圖塊: "
+                };
+                
+                var filter = new SelectionFilter(new[]
+                {
+                    new TypedValue((int)DxfCode.Start, "INSERT")
+                });
+                
+                var selResult = ed.GetSelection(opts, filter);
+                if (selResult.Status != PromptStatus.OK)
+                {
+                    ed.WriteMessage("\n未選取任何圖塊，測試結束。");
+                    return;
+                }
+
+                var entityIds = selResult.Value.GetObjectIds();
+                ed.WriteMessage($"\n已選取 {entityIds.Length} 個圖塊");
+
+                // 檢查圖塊是否在鎖定圖層上
+                using (var tr = doc.Database.TransactionManager.StartTransaction())
+                {
+                    int lockedBlockCount = 0;
+                    foreach (var objId in entityIds)
+                    {
+                        if (tr.GetObject(objId, OpenMode.ForRead) is BlockReference blockRef)
+                        {
+                            if (IsEntityOnLockedLayer(tr, blockRef))
+                            {
+                                lockedBlockCount++;
+                                ed.WriteMessage($"\n找到鎖定圖層上的圖塊: {blockRef.Name} (圖層: {blockRef.Layer})");
+                            }
+                        }
+                    }
+                    tr.Commit();
+                    
+                    if (lockedBlockCount == 0)
+                    {
+                        ed.WriteMessage("\n所選圖塊都不在鎖定圖層上，無法測試分解重組功能。");
+                        ed.WriteMessage("\n請先將一些圖塊移到鎖定圖層上再測試。");
+                        return;
+                    }
+                    
+                    ed.WriteMessage($"\n共找到 {lockedBlockCount} 個在鎖定圖層上的圖塊");
+                }
+
+                // 詢問目標圖層
+                var layerOpts = new PromptStringOptions("\n輸入目標圖層名稱: ");
+                layerOpts.AllowSpaces = false;
+                layerOpts.DefaultValue = "0";
+                
+                var layerResult = ed.GetString(layerOpts);
+                if (layerResult.Status != PromptStatus.OK)
+                {
+                    ed.WriteMessage("\n操作已取消。");
+                    return;
+                }
+
+                string targetLayer = layerResult.StringResult;
+                ed.WriteMessage($"\n目標圖層: {targetLayer}");
+
+                // 執行轉換（使用分解重組法）
+                ed.WriteMessage("\n開始執行圖塊分解重組轉換...");
+                
+                var entityConverter = new EntityConverter();
+                var layerService = new LayerService(entityConverter);
+                
+                var options = new ConversionOptions
+                {
+                    CreateTargetLayer = true,
+                    UnlockTargetLayer = true,
+                    ForceConvertLockedObjects = true,
+                    UseBlockExplodeMethod = true,  // 關鍵：啟用分解重組法
+                    ProcessBlocks = true,
+                    MaxDepth = 10
+                };
+
+                var conversionTask = layerService.ConvertEntitiesToLayerAsync(entityIds, targetLayer, options);
+                var result = conversionTask.Result; // 同步等待結果
+
+                // 顯示詳細結果
+                ed.WriteMessage("\n=== 轉換結果 ===");
+                ed.WriteMessage($"\n成功轉換: {result.ConvertedCount} 個物件");
+                ed.WriteMessage($"\n跳過物件: {result.SkippedCount} 個");
+                ed.WriteMessage($"\n錯誤物件: {result.ErrorCount} 個");
+                
+                if (result.Errors.Any())
+                {
+                    ed.WriteMessage($"\n錯誤詳情:");
+                    foreach (var error in result.Errors.Take(5))
+                    {
+                        ed.WriteMessage($"\n  - {error}");
+                    }
+                }
+                
+                if (result.ConvertedCount > 0)
+                {
+                    ed.WriteMessage("\n? 圖塊分解重組功能測試成功！");
+                }
+                else
+                {
+                    ed.WriteMessage("\n? 圖塊分解重組功能可能存在問題。");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n測試過程發生錯誤: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"LayerBlockTestCommand error: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// 測試圖層載入功能指令
+        /// </summary>
+        [CommandMethod("LAYERLOADTEST", CommandFlags.Modal)]
+        public void LayerLoadTestCommand()
+        {
+            var doc = AcadApp.DocumentManager.MdiActiveDocument;
+            var ed = doc?.Editor;
+            if (ed == null) return;
+
+            try
+            {
+                ed.WriteMessage("\n=== 圖層載入功能測試 ===");
+                
+                // 測試直接讀取圖層
+                var layers = GetLayers();
+                ed.WriteMessage($"\n? 直接讀取找到 {layers.Count} 個圖層");
+                
+                if (layers.Count > 0)
+                {
+                    ed.WriteMessage($"\n前10個圖層:");
+                    foreach (var layer in layers.Take(10))
+                    {
+                        ed.WriteMessage($"\n  - {layer}");
+                    }
+                }
+
+                // 測試LayerService
+                try
+                {
+                    var entityConverter = new EntityConverter();
+                    var layerService = new LayerService(entityConverter);
+                    var layerInfoTask = layerService.GetLayersAsync();
+                    var layerInfos = layerInfoTask.Result;
+                    
+                    ed.WriteMessage($"\n? LayerService找到 {layerInfos.Count} 個圖層");
+                    
+                    if (layerInfos.Count > 0)
+                    {
+                        ed.WriteMessage($"\n前5個圖層詳情:");
+                        foreach (var layerInfo in layerInfos.Take(5))
+                        {
+                            string status = "";
+                            if (layerInfo.IsLocked) status += "鎖定 ";
+                            if (layerInfo.IsFrozen) status += "凍結 ";
+                            if (layerInfo.IsOff) status += "關閉 ";
+                            
+                            ed.WriteMessage($"\n  - {layerInfo.Name} ({(string.IsNullOrEmpty(status) ? "正常" : status.Trim())})");
+                        }
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    ed.WriteMessage($"\n? LayerService測試失敗: {ex.Message}");
+                }
+
+                ed.WriteMessage("\n? 圖層載入測試完成！");
+                ed.WriteMessage("\n如果看到圖層列表，表示功能正常。");
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n測試失敗: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"LayerLoadTestCommand error: {ex}");
+            }
+        }
+
+        #region 私有輔助方法
+
+        /// <summary>
+        /// 轉換實體到圖層（支援強制轉換選項）
+        /// </summary>
+        private ConversionResult ConvertEntitiesWithOptions(ObjectId[] entityIds, string targetLayer, bool forceConvert)
+        {
+            var result = new ConversionResult();
+            
+            try
+            {
+                var doc = AcadApp.DocumentManager.MdiActiveDocument;
+                if (doc?.Database == null) return result;
+
+                using (var tr = doc.Database.TransactionManager.StartTransaction())
+                {
+                    // 確保目標圖層存在
+                    EnsureLayerExists(tr, doc.Database, targetLayer);
+
+                    foreach (var objId in entityIds)
+                    {
+                        try
+                        {
+                            if (tr.GetObject(objId, OpenMode.ForRead) is Entity entity)
+                            {
+                                bool converted = false;
+
+                                if (forceConvert)
+                                {
+                                    // 強制轉換模式
+                                    converted = ConvertEntityWithUnlock(tr, entity, targetLayer);
+                                }
+                                else
+                                {
+                                    // 傳統模式：跳過鎖定圖層
+                                    if (!IsEntityOnLockedLayer(tr, entity))
+                                    {
+                                        entity.UpgradeOpen();
+                                        entity.Layer = targetLayer;
+                                        converted = true;
+                                    }
+                                }
+
+                                if (converted)
+                                {
+                                    result.ConvertedCount++;
+                                }
+                                else
+                                {
+                                    result.SkippedCount++;
+                                    result.Errors.Add($"跳過鎖定圖層上的物件 {objId}");
+                                }
+                            }
+                        }
+                        catch (System.Exception ex)
+                        {
+                            result.ErrorCount++;
+                            result.Errors.Add($"物件 {objId}: {ex.Message}");
+                        }
+                    }
+
+                    tr.Commit();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                result.ErrorCount++;
+                result.Errors.Add($"轉換失敗: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ConvertEntitiesWithOptions error: {ex}");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 強制轉換實體，包括鎖定圖層上的物件
+        /// </summary>
+        private bool ConvertEntityWithUnlock(Transaction tr, Entity entity, string targetLayer)
+        {
+            try
+            {
+                bool wasLayerLocked = false;
+                LayerTableRecord? sourceLayerRecord = null;
+
+                // 檢查當前圖層是否被鎖定
+                if (IsEntityOnLockedLayer(tr, entity, out sourceLayerRecord))
+                {
+                    // 暫時解鎖源圖層以允許修改
+                    if (sourceLayerRecord != null && sourceLayerRecord.IsLocked)
+                    {
+                        sourceLayerRecord.UpgradeOpen();
+                        sourceLayerRecord.IsLocked = false;
+                        wasLayerLocked = true;
+                    }
+                }
+
+                try
+                {
+                    // 升級為寫入模式並變更圖層
+                    entity.UpgradeOpen();
+                    entity.Layer = targetLayer;
+                    return true;
+                }
+                finally
+                {
+                    // 恢復源圖層的鎖定狀態
+                    if (wasLayerLocked && sourceLayerRecord != null)
+                    {
+                        if (!sourceLayerRecord.IsWriteEnabled)
+                        {
+                            sourceLayerRecord.UpgradeOpen();
+                        }
+                        sourceLayerRecord.IsLocked = true;
+                    }
+                }
+            }
+            catch (Autodesk.AutoCAD.Runtime.Exception ex) when (ex.ErrorStatus == Autodesk.AutoCAD.Runtime.ErrorStatus.OnLockedLayer)
+            {
+                // 即使暫時解鎖也無法修改
+                System.Diagnostics.Debug.WriteLine($"無法轉換鎖定圖層上的實體: {ex.Message}");
+                return false;
+            }
+            catch (System.Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"轉換實體圖層時發生錯誤: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 檢查實體是否在鎖定圖層上，並返回圖層記錄
+        /// </summary>
+        private bool IsEntityOnLockedLayer(Transaction tr, Entity entity, out LayerTableRecord? layerRecord)
+        {
+            layerRecord = null;
+            
+            try
+            {
+                var doc = AcadApp.DocumentManager.MdiActiveDocument;
+                if (doc?.Database == null) return false;
+
+                var layerTable = tr.GetObject(doc.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
+                
+                if (layerTable?.Has(entity.Layer) == true)
+                {
+                    layerRecord = tr.GetObject(layerTable[entity.Layer], OpenMode.ForRead) as LayerTableRecord;
+                    return layerRecord?.IsLocked == true;
+                }
+
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 檢查實體是否在鎖定圖層上（簡化版本）
+        /// </summary>
+        private bool IsEntityOnLockedLayer(Transaction tr, Entity entity)
+        {
+            return IsEntityOnLockedLayer(tr, entity, out _);
         }
 
         /// <summary>
@@ -288,53 +656,6 @@ namespace AutoCAD_Layer_Manger.Commands
         }
 
         /// <summary>
-        /// 轉換實體到圖層
-        /// </summary>
-        private LayerManagerForm.ConversionResult ConvertEntities(ObjectId[] entityIds, string targetLayer)
-        {
-            var result = new LayerManagerForm.ConversionResult();
-            
-            try
-            {
-                var doc = AcadApp.DocumentManager.MdiActiveDocument;
-                if (doc?.Database == null) return result;
-
-                using (var tr = doc.Database.TransactionManager.StartTransaction())
-                {
-                    // 確保目標圖層存在
-                    EnsureLayerExists(tr, doc.Database, targetLayer);
-
-                    foreach (var objId in entityIds)
-                    {
-                        try
-                        {
-                            if (tr.GetObject(objId, OpenMode.ForWrite) is Entity entity)
-                            {
-                                entity.Layer = targetLayer;
-                                result.ConvertedCount++;
-                            }
-                        }
-                        catch (System.Exception ex)
-                        {
-                            result.ErrorCount++;
-                            result.Errors.Add($"物件 {objId}: {ex.Message}");
-                        }
-                    }
-
-                    tr.Commit();
-                }
-            }
-            catch (System.Exception ex)
-            {
-                result.ErrorCount++;
-                result.Errors.Add($"轉換失敗: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"ConvertEntities error: {ex}");
-            }
-
-            return result;
-        }
-
-        /// <summary>
         /// 確保圖層存在
         /// </summary>
         private void EnsureLayerExists(Transaction tr, Database db, string layerName)
@@ -362,10 +683,11 @@ namespace AutoCAD_Layer_Manger.Commands
         /// <summary>
         /// 顯示轉換結果
         /// </summary>
-        private void ShowResult(Editor ed, LayerManagerForm.ConversionResult result)
+        private void ShowResult(Editor ed, ConversionResult result)
         {
             ed.WriteMessage($"\n=== 轉換結果 ===");
             ed.WriteMessage($"\n成功轉換: {result.ConvertedCount} 個物件");
+            ed.WriteMessage($"\n跳過物件: {result.SkippedCount} 個");
             ed.WriteMessage($"\n錯誤物件: {result.ErrorCount} 個");
             
             if (result.Errors.Any())
@@ -383,6 +705,8 @@ namespace AutoCAD_Layer_Manger.Commands
             
             ed.WriteMessage("\n轉換完成！");
         }
+
+        #endregion
 
         #region 數據類別
 
