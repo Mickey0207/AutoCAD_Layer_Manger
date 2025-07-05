@@ -1,0 +1,60 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RootNamespace>AutoCAD_Layer_Manger</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Platforms>x64</Platforms>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+    <OutputType>Library</OutputType>
+    <AssemblyTitle>AutoCAD Layer Manager</AssemblyTitle>
+    <AssemblyDescription>AutoCAD圖層管理插件</AssemblyDescription>
+    <AssemblyVersion>4.0.0.0</AssemblyVersion>
+    <FileVersion>4.0.0.0</FileVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <Optimize>false</Optimize>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AutoCAD.NET" Version="25.0.1" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="UI\LayerManagerForm.Designer.cs">
+      <DependentUpon>LayerManagerForm.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 移除不需要的檔案 -->
+    <Compile Remove="LayerManagerForm.cs" />
+    <Compile Remove="LayerManagerForm.Designer.cs" />
+    <Compile Remove="ProgressForm.cs" />
+    <Compile Remove="ProgressForm.Designer.cs" />
+    <Compile Remove="myCommands.cs" />
+    <Compile Remove="Converters.cs" />
+    <Compile Remove="LayerManagerUI.xaml.cs" />
+    <Compile Remove="ProgressDialog.xaml.cs" />
+    <None Remove="LayerManagerUI.xaml" />
+    <None Remove="ProgressDialog.xaml" />
+  </ItemGroup>
+
+</Project>
