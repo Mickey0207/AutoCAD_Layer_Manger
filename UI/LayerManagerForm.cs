@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -13,14 +13,14 @@ using AutoCAD_Layer_Manger.Services;
 namespace AutoCAD_Layer_Manger.UI
 {
     /// <summary>
-    /// ²Î¤@ªº¹Ï¼hºŞ²z¾¹ªí³æ - ¥i¥Î³]­p¤u¨ã½s¿è
+    /// çµ±ä¸€çš„åœ–å±¤ç®¡ç†å™¨è¡¨å–® - å¯ç”¨è¨­è¨ˆå·¥å…·ç·¨è¼¯
     /// </summary>
     public partial class LayerManagerForm : Form
     {
         private readonly ObjectId[] _entityIds;
         private readonly ILayerService _layerService;
         private readonly IEntityConverter _entityConverter;
-        
+
         public ConversionResult? Result { get; private set; }
 
         public LayerManagerForm()
@@ -42,10 +42,10 @@ namespace AutoCAD_Layer_Manger.UI
 
         private void InitializeFormData()
         {
-            // ³]©wª«¥ó¼Æ¶q¸ê°T
-            this.infoLabel.Text = $"¤w¿ï¨ú {_entityIds.Length} ­Óª«¥ó";
-            
-            // ¸ü¤J¹Ï¼h¼Æ¾Ú
+            // è¨­å®šç‰©ä»¶æ•¸é‡è³‡è¨Š
+            this.infoLabel.Text = $"å·²é¸å– {_entityIds.Length} å€‹ç‰©ä»¶";
+
+            // è¼‰å…¥åœ–å±¤æ•¸æ“š
             LoadLayers();
         }
 
@@ -53,43 +53,43 @@ namespace AutoCAD_Layer_Manger.UI
         {
             try
             {
-                this.statusLabel.Text = "¥¿¦b¸ü¤J¹Ï¼h...";
+                this.statusLabel.Text = "æ­£åœ¨è¼‰å…¥åœ–å±¤...";
                 this.layerComboBox.Items.Clear();
-                
-                // ¨Ï¥Î¦P¨B¤èªk¨ÓÁ×§K½uµ{°İÃD
+
+                // ä½¿ç”¨åŒæ­¥æ–¹æ³•ä¾†é¿å…ç·šç¨‹å•é¡Œ
                 var layers = GetLayersSync();
-                
+
                 foreach (var layer in layers)
                 {
                     string displayName = layer.Name;
-                    if (layer.IsLocked) displayName += " (Âê©w)";
-                    if (layer.IsFrozen) displayName += " (­áµ²)";
-                    
+                    if (layer.IsLocked) displayName += " (é–å®š)";
+                    if (layer.IsFrozen) displayName += " (å‡çµ)";
+
                     this.layerComboBox.Items.Add(displayName);
                 }
-                
+
                 if (this.layerComboBox.Items.Count > 0)
                 {
                     this.layerComboBox.SelectedIndex = 0;
                 }
 
-                this.statusLabel.Text = $"¸ü¤J§¹¦¨¡A§ä¨ì {this.layerComboBox.Items.Count} ­Ó¹Ï¼h";
+                this.statusLabel.Text = $"è¼‰å…¥å®Œæˆï¼Œæ‰¾åˆ° {this.layerComboBox.Items.Count} å€‹åœ–å±¤";
             }
             catch (System.Exception ex)
             {
-                this.statusLabel.Text = "¸ü¤J¹Ï¼h¥¢±Ñ";
-                MessageBox.Show($"¸ü¤J¹Ï¼h¥¢±Ñ: {ex.Message}", "¿ù»~", 
+                this.statusLabel.Text = "è¼‰å…¥åœ–å±¤å¤±æ•—";
+                MessageBox.Show($"è¼‰å…¥åœ–å±¤å¤±æ•—: {ex.Message}", "éŒ¯èª¤",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         /// <summary>
-        /// ¦P¨BÀò¨ú¹Ï¼h¦Cªí
+        /// åŒæ­¥ç²å–åœ–å±¤åˆ—è¡¨
         /// </summary>
         private List<LayerInfo> GetLayersSync()
         {
             var layers = new List<LayerInfo>();
-            
+
             try
             {
                 var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
@@ -122,10 +122,36 @@ namespace AutoCAD_Layer_Manger.UI
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Àò¨ú¹Ï¼h¥¢±Ñ: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ç²å–åœ–å±¤å¤±æ•—: {ex.Message}");
             }
 
             return layers.OrderBy(l => l.Name).ToList();
+        }
+
+        /// <summary>
+        /// è‡ªå‹•é¸æ“‡æ–¹æ³•CheckBoxè®Šæ›´äº‹ä»¶
+        /// </summary>
+        private void autoSelectMethodCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            // ç•¶å•Ÿç”¨è‡ªå‹•é¸æ“‡æ™‚ï¼Œå•Ÿç”¨æ‰€æœ‰æ–¹æ³•
+            if (this.autoSelectMethodCheckBox.Checked)
+            {
+                this.blockExplodeMethodCheckBox.Checked = true;
+                this.referenceEditMethodCheckBox.Checked = true;
+                this.blockEditorMethodCheckBox.Checked = false; // åœ–å¡Šç·¨è¼¯å™¨éœ€è¦æ‰‹å‹•ï¼Œé è¨­ä¸å•Ÿç”¨
+
+                // å¯ä»¥é¸æ“‡æ€§ç¦ç”¨æ‰‹å‹•é¸æ“‡
+                this.blockExplodeMethodCheckBox.Enabled = true;
+                this.referenceEditMethodCheckBox.Enabled = true;
+                this.blockEditorMethodCheckBox.Enabled = true;
+            }
+            else
+            {
+                // æ‰‹å‹•æ¨¡å¼ï¼Œç”¨æˆ¶å¯ä»¥è‡ªç”±é¸æ“‡
+                this.blockExplodeMethodCheckBox.Enabled = true;
+                this.referenceEditMethodCheckBox.Enabled = true;
+                this.blockEditorMethodCheckBox.Enabled = true;
+            }
         }
 
         private void previewButton_Click(object sender, EventArgs e)
@@ -133,26 +159,53 @@ namespace AutoCAD_Layer_Manger.UI
             if (this.layerComboBox.SelectedItem is string selectedItem)
             {
                 string layerName = selectedItem.Split(' ')[0];
-                string message = "Âà´«¹wÄı:\n\n";
-                message += $"ª«¥ó¼Æ¶q: {_entityIds.Length}\n";
-                message += $"¥Ø¼Ğ¹Ï¼h: {layerName}\n\n";
-                message += "Âà´«³]©w:\n";
-                message += $"? ¦Û°Ê¸ÑÂê¥Ø¼Ğ¹Ï¼h: {(this.unlockTargetLayerCheckBox.Checked ? "¬O" : "§_")}\n";
-                message += $"? ¦Û°Ê³Ğ«Ø¹Ï¼h: {(this.createLayerCheckBox.Checked ? "¬O" : "§_")}\n";
-                message += $"? ±j¨îÂà´«Âê©wª«¥ó: {(this.handleLockedObjectsCheckBox.Checked ? "¬O¡A¥]¬AÂê©w¹Ï¼h¤Wªº¹Ï¶ô" : "§_¡A¸õ¹LÂê©w¹Ï¼h¤Wªºª«¥ó")}\n";
-                message += $"? ¹Ï¶ô¤À¸Ñ­«²Õªk: {(this.blockExplodeMethodCheckBox.Checked ? "¬O¡A¹ïÂê©w¹Ï¶ô¨Ï¥Î¤À¸Ñ­«²Õ" : "§_¡A¨Ï¥Î¶Ç²Î¤èªk")}\n";
-                
-                if (this.handleLockedObjectsCheckBox.Checked && this.blockExplodeMethodCheckBox.Checked)
+                string message = "è½‰æ›é è¦½:\n\n";
+                message += $"ç‰©ä»¶æ•¸é‡: {_entityIds.Length}\n";
+                message += $"ç›®æ¨™åœ–å±¤: {layerName}\n\n";
+
+                message += "åŸºæœ¬è¨­å®š:\n";
+                message += $"  è‡ªå‹•è§£é–ç›®æ¨™åœ–å±¤: {(this.unlockTargetLayerCheckBox.Checked ? "æ˜¯" : "å¦")}\n";
+                message += $"  è‡ªå‹•å‰µå»ºåœ–å±¤: {(this.createLayerCheckBox.Checked ? "æ˜¯" : "å¦")}\n";
+                message += $"  å¼·åˆ¶è½‰æ›é–å®šç‰©ä»¶: {(this.handleLockedObjectsCheckBox.Checked ? "æ˜¯" : "å¦")}\n";
+                message += $"  è™•ç†é–å®šåœ–å±¤çš„æ¨™è¨»å’Œå‹•æ…‹åœ–å¡Š: {(this.processAnnotationsCheckBox.Checked ? "æ˜¯" : "å¦")}\n\n";
+
+                message += "è™•ç†æ–¹æ³•:\n";
+                if (this.autoSelectMethodCheckBox.Checked)
                 {
-                    message += "\n?? ª`·N¡G¤À¸Ñ­«²Õªk·|¼È®É¤À¸ÑÂê©w¹Ï¶ô¨ì°òÂ¦¤¸¯À¡AÂà´«¹Ï¼h«á­«·s²Õ¦X¦¨¬Û¦Pªº¹Ï¶ô¡C";
-                    message += "\n³oºØ¤èªk§ó¦w¥ş¥i¾a¡A¦ı·|­«·s³Ğ«Ø¹Ï¶ô©w¸q¡C";
+                    message += "  æ™ºèƒ½è‡ªå‹•é¸æ“‡: æ˜¯ (æ¨è–¦)\n";
+                    message += "     å¤±æ•—æ™‚è‡ªå‹•å˜—è©¦å…¶ä»–æ–¹æ³•\n";
+                    message += "     å„ªå…ˆé †åº: å‚³çµ±æ–¹æ³• â†’ åˆ†è§£é‡çµ„ â†’ ç¾åœ°ç·¨è¼¯\n";
                 }
-                else if (this.handleLockedObjectsCheckBox.Checked)
+                else
                 {
-                    message += "\n?? ª`·N¡G±Ò¥Î±j¨îÂà´«·|¼È®É¸ÑÂê·½¹Ï¼h¡AÂà´«§¹¦¨«á¦Û°Ê«ì´_Âê©wª¬ºA¡C";
+                    message += "  æ‰‹å‹•é¸æ“‡æ–¹æ³•:\n";
                 }
-                
-                MessageBox.Show(message, "Âà´«¹wÄı", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                var enabledMethods = new List<string>();
+                if (this.blockExplodeMethodCheckBox.Checked) enabledMethods.Add("åˆ†è§£é‡çµ„æ³•");
+                if (this.referenceEditMethodCheckBox.Checked) enabledMethods.Add("ç¾åœ°ç·¨è¼¯æ³•");
+                if (this.blockEditorMethodCheckBox.Checked) enabledMethods.Add("åœ–å¡Šç·¨è¼¯å™¨æ³•");
+
+                if (enabledMethods.Count > 0)
+                {
+                    message += $"     å•Ÿç”¨æ–¹æ³•: {string.Join(", ", enabledMethods)}\n";
+                }
+                else if (!this.autoSelectMethodCheckBox.Checked)
+                {
+                    message += "     åƒ…ä½¿ç”¨å‚³çµ±æ–¹æ³•\n";
+                }
+
+                if (this.blockEditorMethodCheckBox.Checked)
+                {
+                    message += "\næ³¨æ„: åœ–å¡Šç·¨è¼¯å™¨æ³•éœ€è¦æ‰‹å‹•æ“ä½œ";
+                }
+
+                if (this.processAnnotationsCheckBox.Checked)
+                {
+                    message += "\nç‰¹åˆ¥è™•ç†: é–å®šåœ–å±¤çš„æ¨™è¨»ã€å°ºå¯¸å’Œå‹•æ…‹åœ–å¡Šæœƒè¢«è‡ªå‹•è§£é–ä¸¦è½‰æ›";
+                }
+
+                MessageBox.Show(message, "è½‰æ›é è¦½", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
@@ -164,79 +217,136 @@ namespace AutoCAD_Layer_Manger.UI
                 {
                     this.convertButton.Enabled = false;
                     this.cancelButton.Enabled = false;
-                    this.statusLabel.Text = "¥¿¦b°õ¦æÂà´«...";
-                    
+                    this.statusLabel.Text = "æ­£åœ¨åŸ·è¡Œè½‰æ›...";
+
                     string layerName = selectedItem.Split(' ')[0];
-                    
-                    // ³Ğ«ØÂà´«¿ï¶µ
+
+                    // å‰µå»ºè½‰æ›é¸é … - æ™ºèƒ½é…ç½®
                     var options = new ConversionOptions
                     {
                         CreateTargetLayer = this.createLayerCheckBox.Checked,
                         UnlockTargetLayer = this.unlockTargetLayerCheckBox.Checked,
                         ForceConvertLockedObjects = this.handleLockedObjectsCheckBox.Checked,
-                        UseBlockExplodeMethod = this.blockExplodeMethodCheckBox.Checked,
+                        ProcessAnnotationsOnLockedLayers = this.processAnnotationsCheckBox.Checked, // æ–°å¢
+
+                        // æ™ºèƒ½æ–¹æ³•é¸æ“‡
+                        UseBlockExplodeMethod = this.autoSelectMethodCheckBox.Checked || this.blockExplodeMethodCheckBox.Checked,
+                        UseReferenceEditMethod = this.autoSelectMethodCheckBox.Checked || this.referenceEditMethodCheckBox.Checked,
+                        UseBlockEditorMethod = this.blockEditorMethodCheckBox.Checked, // åªæœ‰æ‰‹å‹•é¸æ“‡æ‰å•Ÿç”¨
+
                         ProcessBlocks = true,
-                        MaxDepth = 50
+                        MaxDepth = 50,
+                        PreferredBlockMethod = GetPreferredBlockMethod(),
+
+                        // æ–°å¢ï¼šå•Ÿç”¨æ™ºèƒ½è‡ªå‹•é‡è©¦
+                        EnableAutoRetry = this.autoSelectMethodCheckBox.Checked
                     };
-                    
-                    // ¨Ï¥Î¦P¨B¤èªk°õ¦æÂà´«
+
+                    // ä½¿ç”¨åŒæ­¥æ–¹æ³•åŸ·è¡Œè½‰æ›
                     Result = ExecuteConversionSync(layerName, options);
-                    
-                    this.statusLabel.Text = "Âà´«§¹¦¨¡I";
-                    
-                    string resultMessage = "Âà´«§¹¦¨¡I\n\n";
-                    resultMessage += $"¦¨¥\Âà´«: {Result.ConvertedCount} ­Óª«¥ó\n";
+
+                    this.statusLabel.Text = "è½‰æ›å®Œæˆï¼";
+
+                    string resultMessage = "è½‰æ›å®Œæˆï¼\n\n";
+                    resultMessage += $"æˆåŠŸè½‰æ›: {Result.ConvertedCount} å€‹ç‰©ä»¶\n";
                     if (Result.SkippedCount > 0)
                     {
-                        resultMessage += $"¸õ¹L: {Result.SkippedCount} ­Óª«¥ó\n";
+                        resultMessage += $"è·³é: {Result.SkippedCount} å€‹ç‰©ä»¶\n";
                     }
-                    resultMessage += $"¿ù»~: {Result.ErrorCount} ­Ó\n";
-                    
+                    if (Result.ErrorCount > 0)
+                    {
+                        resultMessage += $"éŒ¯èª¤: {Result.ErrorCount} å€‹\n";
+                    }
+
                     if (Result.Errors.Any())
                     {
-                        resultMessage += $"\n¿ù»~¸Ô±¡:\n{string.Join("\n", Result.Errors.Take(3))}";
+                        resultMessage += $"\néŒ¯èª¤è©³æƒ…:\n";
+                        foreach (var error in Result.Errors.Take(3))
+                        {
+                            resultMessage += $"  {error}\n";
+                        }
                         if (Result.Errors.Count > 3)
                         {
-                            resultMessage += $"\n... ÁÙ¦³ {Result.Errors.Count - 3} ­Ó¿ù»~";
+                            resultMessage += $"  é‚„æœ‰ {Result.Errors.Count - 3} å€‹éŒ¯èª¤\n";
                         }
                     }
-                    
-                    if (options.UseBlockExplodeMethod && this.handleLockedObjectsCheckBox.Checked)
+
+                    // é¡¯ç¤ºä½¿ç”¨çš„æ–¹æ³•çµ±è¨ˆ
+                    if (options.EnableAutoRetry)
                     {
-                        resultMessage += "\n\n? ¤w¨Ï¥Î¹Ï¶ô¤À¸Ñ­«²Õ§Ş³N³B²zÂê©w¹Ï¶ô";
+                        resultMessage += "\nä½¿ç”¨äº†æ™ºèƒ½è‡ªå‹•é¸æ“‡æ¨¡å¼";
                     }
-                    
-                    MessageBox.Show(resultMessage, "Âà´«µ²ªG", 
-                        MessageBoxButtons.OK, 
+
+                    if (options.ProcessAnnotationsOnLockedLayers)
+                    {
+                        resultMessage += "\nå·²è™•ç†é–å®šåœ–å±¤çš„æ¨™è¨»å’Œå‹•æ…‹åœ–å¡Š";
+                    }
+
+                    var usedMethods = new List<string>();
+                    if (options.UseBlockExplodeMethod) usedMethods.Add("åˆ†è§£é‡çµ„æ³•");
+                    if (options.UseReferenceEditMethod) usedMethods.Add("ç¾åœ°ç·¨è¼¯æ³•");
+                    if (options.UseBlockEditorMethod) usedMethods.Add("åœ–å¡Šç·¨è¼¯å™¨æ³•");
+
+                    if (usedMethods.Count > 0)
+                    {
+                        resultMessage += $"\nå•Ÿç”¨çš„è™•ç†æ–¹æ³•: {string.Join(", ", usedMethods)}";
+                    }
+
+                    MessageBox.Show(resultMessage, "è½‰æ›çµæœ",
+                        MessageBoxButtons.OK,
                         Result.ErrorCount > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
-                    
+
                     this.DialogResult = DialogResult.OK;
                     this.Close();
                 }
                 catch (System.Exception ex)
                 {
-                    this.statusLabel.Text = "Âà´«¥¢±Ñ";
-                    MessageBox.Show($"Âà´«¥¢±Ñ: {ex.Message}", "¿ù»~", 
+                    this.statusLabel.Text = "è½‰æ›å¤±æ•—";
+                    MessageBox.Show($"è½‰æ›å¤±æ•—: {ex.Message}", "éŒ¯èª¤",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    
+
                     this.convertButton.Enabled = true;
                     this.cancelButton.Enabled = true;
                 }
             }
             else
             {
-                MessageBox.Show("½Ğ¿ï¾Ü¥Ø¼Ğ¹Ï¼h", "´£¥Ü", 
+                MessageBox.Show("è«‹é¸æ“‡ç›®æ¨™åœ–å±¤", "æç¤º",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
         /// <summary>
-        /// ¦P¨B°õ¦æÂà´«
+        /// æ ¹æ“šUIè¨­å®šç²å–é¦–é¸çš„åœ–å¡Šè™•ç†æ–¹æ³•
+        /// </summary>
+        private BlockProcessingMethod GetPreferredBlockMethod()
+        {
+            // æ ¹æ“šCheckBoxçš„é¸æ“‡ç¢ºå®šå„ªå…ˆé †åº
+            if (this.blockEditorMethodCheckBox.Checked)
+            {
+                return BlockProcessingMethod.BlockEditor;
+            }
+            else if (this.referenceEditMethodCheckBox.Checked)
+            {
+                return BlockProcessingMethod.ReferenceEdit;
+            }
+            else if (this.blockExplodeMethodCheckBox.Checked)
+            {
+                return BlockProcessingMethod.ExplodeRecombine;
+            }
+            else
+            {
+                return BlockProcessingMethod.Traditional;
+            }
+        }
+
+        /// <summary>
+        /// åŒæ­¥åŸ·è¡Œè½‰æ›
         /// </summary>
         private ConversionResult ExecuteConversionSync(string targetLayer, ConversionOptions options)
         {
             var result = new ConversionResult();
-            
+
             try
             {
                 var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
@@ -244,7 +354,7 @@ namespace AutoCAD_Layer_Manger.UI
 
                 using (var tr = doc.Database.TransactionManager.StartTransaction())
                 {
-                    // ¦pªG»İ­n¡A³Ğ«Ø¹Ï¼h
+                    // å¦‚æœéœ€è¦ï¼Œå‰µå»ºåœ–å±¤
                     if (options.CreateTargetLayer)
                     {
                         var layerTable = tr.GetObject(doc.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
@@ -257,7 +367,7 @@ namespace AutoCAD_Layer_Manger.UI
                         }
                     }
 
-                    // ¦pªG»İ­n¡A¸ÑÂê¥Ø¼Ğ¹Ï¼h
+                    // å¦‚æœéœ€è¦ï¼Œè§£é–ç›®æ¨™åœ–å±¤
                     if (options.UnlockTargetLayer)
                     {
                         var layerTable = tr.GetObject(doc.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
@@ -272,7 +382,7 @@ namespace AutoCAD_Layer_Manger.UI
                         }
                     }
 
-                    // ¨Ï¥ÎEntityConverter¶i¦æÂà´«
+                    // ä½¿ç”¨EntityConverteré€²è¡Œè½‰æ›
                     foreach (var objId in _entityIds)
                     {
                         try
@@ -281,7 +391,7 @@ namespace AutoCAD_Layer_Manger.UI
                             {
                                 var entityResult = _entityConverter.ConvertEntityToLayer(
                                     tr, entity, targetLayer, Matrix3d.Identity, options);
-                                
+
                                 result.ConvertedCount += entityResult.ConvertedCount;
                                 result.SkippedCount += entityResult.SkippedCount;
                                 result.ErrorCount += entityResult.ErrorCount;
@@ -291,7 +401,7 @@ namespace AutoCAD_Layer_Manger.UI
                         catch (System.Exception ex)
                         {
                             result.ErrorCount++;
-                            result.Errors.Add($"ª«¥ó {objId}: {ex.Message}");
+                            result.Errors.Add($"ç‰©ä»¶ {objId}: {ex.Message}");
                         }
                     }
 
@@ -301,11 +411,16 @@ namespace AutoCAD_Layer_Manger.UI
             catch (System.Exception ex)
             {
                 result.ErrorCount++;
-                result.Errors.Add($"Âà´«¥¢±Ñ: {ex.Message}");
+                result.Errors.Add($"è½‰æ›å¤±æ•—: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"ExecuteConversionSync error: {ex}");
             }
 
             return result;
+        }
+
+        private void blockEditorMethodCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }

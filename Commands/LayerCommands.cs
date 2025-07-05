@@ -363,6 +363,286 @@ namespace AutoCAD_Layer_Manger.Commands
             }
         }
 
+        /// <summary>
+        /// 診斷實體轉換問題的指令
+        /// </summary>
+        [CommandMethod("LAYERDIAGNOSE", CommandFlags.Modal)]
+        public void LayerDiagnoseCommand()
+        {
+            var doc = AcadApp.DocumentManager.MdiActiveDocument;
+            var ed = doc?.Editor;
+            if (ed == null) return;
+
+            try
+            {
+                ed.WriteMessage("\n=== 圖層轉換診斷工具 ===");
+                
+                // 選取要診斷的物件
+                var selOpts = new PromptSelectionOptions
+                {
+                    MessageForAdding = "\n選取要診斷的物件: ",
+                    AllowDuplicates = false
+                };
+
+                var selResult = ed.GetSelection(selOpts);
+                if (selResult.Status != PromptStatus.OK)
+                {
+                    ed.WriteMessage("\n未選取任何物件。");
+                    return;
+                }
+
+                var entityIds = selResult.Value.GetObjectIds();
+                ed.WriteMessage($"\n正在診斷 {entityIds.Length} 個物件...");
+
+                using (var tr = doc.Database.TransactionManager.StartTransaction())
+                {
+                    var lockedCount = 0;
+                    var erasedCount = 0;
+                    var unsupportedCount = 0;
+                    var blockCount = 0;
+                    var normalCount = 0;
+
+                    foreach (var objId in entityIds)
+                    {
+                        try
+                        {
+                            if (tr.GetObject(objId, OpenMode.ForRead) is Entity entity)
+                            {
+                                ed.WriteMessage($"\n\n物件類型: {entity.GetType().Name}");
+                                ed.WriteMessage($"\n當前圖層: {entity.Layer}");
+
+                                // 檢查是否已刪除
+                                if (entity.IsErased)
+                                {
+                                    ed.WriteMessage("\n狀態: ? 已刪除");
+                                    erasedCount++;
+                                    continue;
+                                }
+
+                                // 檢查圖層狀態
+                                var layerTable = tr.GetObject(doc.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
+                                if (layerTable?.Has(entity.Layer) == true)
+                                {
+                                    var layerRecord = tr.GetObject(layerTable[entity.Layer], OpenMode.ForRead) as LayerTableRecord;
+                                    if (layerRecord != null)
+                                    {
+                                        ed.WriteMessage($"\n圖層狀態: {(layerRecord.IsLocked ? "?? 鎖定" : "?? 未鎖定")} | {(layerRecord.IsFrozen ? "?? 凍結" : "??? 未凍結")} | {(layerRecord.IsOff ? "?? 關閉" : "?? 開啟")}");
+                                        
+                                        if (layerRecord.IsLocked)
+                                        {
+                                            lockedCount++;
+                                        }
+                                    }
+                                }
+
+                                // 檢查實體類型
+                                if (entity is BlockReference blockRef)
+                                {
+                                    ed.WriteMessage($"\n圖塊資訊: {blockRef.Name}");
+                                    ed.WriteMessage($"\n動態圖塊: {(blockRef.IsDynamicBlock ? "是" : "否")}");
+                                    
+                                    // 檢查圖塊定義
+                                    var btr = tr.GetObject(blockRef.BlockTableRecord, OpenMode.ForRead) as BlockTableRecord;
+                                    if (btr != null)
+                                    {
+                                        ed.WriteMessage($"\n可分解: {(btr.Explodable ? "是" : "否")}");
+                                    }
+                                    blockCount++;
+                                }
+                                else
+                                {
+                                    var entityConverter = new EntityConverter();
+                                    if (entityConverter.IsGeometricEntity(entity))
+                                    {
+                                        ed.WriteMessage("\n類型: ? 支援的幾何實體");
+                                        normalCount++;
+                                    }
+                                    else
+                                    {
+                                        ed.WriteMessage("\n類型: ? 不支援的實體類型");
+                                        unsupportedCount++;
+                                    }
+                                }
+
+                                // 檢查寫入權限
+                                try
+                                {
+                                    entity.UpgradeOpen();
+                                    ed.WriteMessage("\n權限: ? 可寫入");
+                                    entity.DowngradeOpen();
+                                }
+                                catch (Autodesk.AutoCAD.Runtime.Exception ex)
+                                {
+                                    ed.WriteMessage($"\n權限: ? 無法寫入 ({ex.ErrorStatus})");
+                                }
+                            }
+                        }
+                        catch (System.Exception ex)
+                        {
+                            ed.WriteMessage($"\n診斷物件 {objId} 時發生錯誤: {ex.Message}");
+                        }
+                    }
+
+                    tr.Commit();
+
+                    // 顯示統計信息
+                    ed.WriteMessage("\n\n=== 診斷結果統計 ===");
+                    ed.WriteMessage($"\n?? 鎖定圖層物件: {lockedCount} 個");
+                    ed.WriteMessage($"\n?? 圖塊物件: {blockCount} 個");
+                    ed.WriteMessage($"\n?? 普通幾何物件: {normalCount} 個");
+                    ed.WriteMessage($"\n? 不支援類型: {unsupportedCount} 個");
+                    ed.WriteMessage($"\n??? 已刪除物件: {erasedCount} 個");
+
+                    // 提供建議
+                    ed.WriteMessage("\n\n=== 建議 ===");
+                    if (lockedCount > 0)
+                    {
+                        ed.WriteMessage("\n? 啟用「強制轉換鎖定物件」選項");
+                        ed.WriteMessage("\n? 對圖塊啟用「圖塊分解重組法」");
+                    }
+                    if (unsupportedCount > 0)
+                    {
+                        ed.WriteMessage("\n? 某些特殊實體類型可能需要手動處理");
+                    }
+                    if (blockCount > 0)
+                    {
+                        ed.WriteMessage("\n? 圖塊建議使用「圖塊分解重組法」以獲得最佳結果");
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n診斷過程發生錯誤: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"LayerDiagnoseCommand error: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// 圖塊編輯器方法測試指令
+        /// </summary>
+        [CommandMethod("LAYEREDITBLOCK", CommandFlags.Modal)]
+        public void LayerEditBlockCommand()
+        {
+            var doc = AcadApp.DocumentManager.MdiActiveDocument;
+            var ed = doc?.Editor;
+            if (ed == null) return;
+
+            try
+            {
+                ed.WriteMessage("\n=== 圖塊編輯器轉換方法測試 ===");
+                ed.WriteMessage("\n此方法使用AutoCAD的圖塊編輯器來轉換圖層");
+                ed.WriteMessage("\n適用於無法通過其他方法轉換的頑固圖塊");
+                
+                // 選取圖塊
+                var opts = new PromptSelectionOptions
+                {
+                    MessageForAdding = "\n選取要使用編輯器方法轉換的圖塊: "
+                };
+                
+                var filter = new SelectionFilter(new[]
+                {
+                    new TypedValue((int)DxfCode.Start, "INSERT")
+                });
+                
+                var selResult = ed.GetSelection(opts, filter);
+                if (selResult.Status != PromptStatus.OK)
+                {
+                    ed.WriteMessage("\n未選取任何圖塊。");
+                    return;
+                }
+
+                var entityIds = selResult.Value.GetObjectIds();
+                ed.WriteMessage($"\n已選取 {entityIds.Length} 個圖塊");
+
+                // 詢問目標圖層
+                var layerOpts = new PromptStringOptions("\n輸入目標圖層名稱: ");
+                layerOpts.AllowSpaces = false;
+                layerOpts.DefaultValue = "0";
+                
+                var layerResult = ed.GetString(layerOpts);
+                if (layerResult.Status != PromptStatus.OK)
+                {
+                    ed.WriteMessage("\n操作已取消。");
+                    return;
+                }
+
+                string targetLayer = layerResult.StringResult;
+                ed.WriteMessage($"\n目標圖層: {targetLayer}");
+
+                // 詢問使用哪種編輯器方法
+                var methodOpts = new PromptKeywordOptions("\n選擇編輯器方法 [Reference編輯(R)/圖塊編輯器(B)]: ");
+                methodOpts.Keywords.Add("Reference");
+                methodOpts.Keywords.Add("Block");
+                methodOpts.Keywords.Default = "Reference";
+
+                var methodResult = ed.GetKeywords(methodOpts);
+                bool useReferenceEdit = methodResult.Status == PromptStatus.OK && 
+                    (methodResult.StringResult == "Reference" || methodResult.StringResult == "R");
+
+                // 執行轉換
+                ed.WriteMessage($"\n開始使用{(useReferenceEdit ? "Reference編輯" : "圖塊編輯器")}方法轉換...");
+                
+                var entityConverter = new EntityConverter();
+                var layerService = new LayerService(entityConverter);
+                
+                var options = new ConversionOptions
+                {
+                    CreateTargetLayer = true,
+                    UnlockTargetLayer = true,
+                    ForceConvertLockedObjects = true,
+                    UseBlockExplodeMethod = false,  // 不使用分解重組
+                    UseReferenceEditMethod = useReferenceEdit,
+                    UseBlockEditorMethod = !useReferenceEdit,
+                    ProcessBlocks = true,
+                    PreferredBlockMethod = useReferenceEdit ? 
+                        BlockProcessingMethod.ReferenceEdit : 
+                        BlockProcessingMethod.BlockEditor
+                };
+
+                var conversionTask = layerService.ConvertEntitiesToLayerAsync(entityIds, targetLayer, options);
+                var result = conversionTask.Result;
+
+                // 顯示結果
+                ed.WriteMessage("\n=== 轉換結果 ===");
+                ed.WriteMessage($"\n成功轉換: {result.ConvertedCount} 個物件");
+                ed.WriteMessage($"\n跳過物件: {result.SkippedCount} 個");
+                ed.WriteMessage($"\n錯誤物件: {result.ErrorCount} 個");
+                
+                if (result.Errors.Any())
+                {
+                    ed.WriteMessage($"\n錯誤詳情:");
+                    foreach (var error in result.Errors.Take(5))
+                    {
+                        ed.WriteMessage($"\n  - {error}");
+                    }
+                    if (result.Errors.Count > 5)
+                    {
+                        ed.WriteMessage($"\n  ... 還有 {result.Errors.Count - 5} 個錯誤");
+                    }
+                }
+                
+                if (result.ConvertedCount > 0)
+                {
+                    ed.WriteMessage($"\n? {(useReferenceEdit ? "Reference編輯" : "圖塊編輯器")}方法測試成功！");
+                }
+                else
+                {
+                    ed.WriteMessage($"\n? {(useReferenceEdit ? "Reference編輯" : "圖塊編輯器")}方法可能需要調整。");
+                }
+                
+                ed.WriteMessage("\n\n?? 提示：");
+                ed.WriteMessage("\n? Reference編輯適用於大多數圖塊");
+                ed.WriteMessage("\n? 圖塊編輯器適用於複雜的嵌套圖塊");
+                ed.WriteMessage("\n? 這些方法會自動處理鎖定圖層問題");
+                
+            }
+            catch (System.Exception ex)
+            {
+                ed.WriteMessage($"\n測試過程發生錯誤: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"LayerEditBlockCommand error: {ex}");
+            }
+        }
+
         #region 私有輔助方法
 
         /// <summary>

@@ -301,18 +301,65 @@ namespace AutoCAD_Layer_Manger.Services
     }
 
     /// <summary>
-    /// 轉換選項 - 增強版本
+    /// 轉換選項 - 智能增強版本
     /// </summary>
     public class ConversionOptions
     {
         public bool CreateTargetLayer { get; set; } = true;
-        public bool SkipLockedObjects { get; set; } = false; // 改為預設不跳過
+        public bool SkipLockedObjects { get; set; } = false;
         public bool UnlockTargetLayer { get; set; } = true;
         public bool ProcessBlocks { get; set; } = true;
-        public bool ForceConvertLockedObjects { get; set; } = true; // 新增：強制轉換鎖定物件
-        public bool RestoreLayerLockState { get; set; } = true; // 新增：轉換後恢復圖層鎖定狀態
-        public bool UseBlockExplodeMethod { get; set; } = true; // 新增：對鎖定圖塊使用分解重組法
-        public int MaxDepth { get; set; } = 50; // 防止無限遞迴最大深度
+        public bool ForceConvertLockedObjects { get; set; } = true;
+        public bool RestoreLayerLockState { get; set; } = true;
+        public bool UseBlockExplodeMethod { get; set; } = true;
+        public bool UseBlockEditorMethod { get; set; } = false;
+        public bool UseReferenceEditMethod { get; set; } = false;
+        public bool EnableAutoRetry { get; set; } = true; // 新增：啟用智能自動重試
+        public bool ProcessAnnotationsOnLockedLayers { get; set; } = true; // 新增：處理鎖定圖層的標註和動態圖塊
+        public int MaxDepth { get; set; } = 50;
+        
+        /// <summary>
+        /// 圖塊處理優先順序
+        /// </summary>
+        public BlockProcessingMethod PreferredBlockMethod { get; set; } = BlockProcessingMethod.ExplodeRecombine;
+        
+        /// <summary>
+        /// 獲取啟用的處理方法列表（按優先順序）
+        /// </summary>
+        public List<BlockProcessingMethod> GetEnabledMethods()
+        {
+            var methods = new List<BlockProcessingMethod>();
+            
+            // 始終包含傳統方法作為基礎
+            methods.Add(BlockProcessingMethod.Traditional);
+            
+            // 根據設定添加其他方法
+            if (UseBlockExplodeMethod)
+                methods.Add(BlockProcessingMethod.ExplodeRecombine);
+                
+            if (UseReferenceEditMethod)
+                methods.Add(BlockProcessingMethod.ReferenceEdit);
+                
+            if (UseBlockEditorMethod)
+                methods.Add(BlockProcessingMethod.BlockEditor);
+            
+            return methods;
+        }
+    }
+
+    /// <summary>
+    /// 圖塊處理方法枚舉
+    /// </summary>
+    public enum BlockProcessingMethod
+    {
+        /// <summary>傳統方法（暫時解鎖）</summary>
+        Traditional = 0,
+        /// <summary>分解重組法</summary>
+        ExplodeRecombine = 1,
+        /// <summary>Reference Edit（現地編輯）</summary>
+        ReferenceEdit = 2,
+        /// <summary>圖塊編輯器</summary>
+        BlockEditor = 3
     }
 
     /// <summary>
